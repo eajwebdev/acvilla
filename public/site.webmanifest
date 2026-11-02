@@ -1,0 +1,11 @@
+{
+    "name": "AC Villa & Private Resort",
+    "short_name": "AC Villa",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#FAFBF8",
+    "theme_color": "#005A1C",
+    "icons": [
+        { "src": "/branding/acvilla-icon.png", "type": "image/png", "sizes": "512x512", "purpose": "any" }
+    ]
+}
