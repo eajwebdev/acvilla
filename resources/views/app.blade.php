@@ -41,7 +41,7 @@
     <link rel="manifest" href="/site.webmanifest">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600;1,700&family=Jost:wght@400;500;600;700&family=Oleo+Script:wght@700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600;1,700&family=Jost:wght@400;500;600;700&family=Hind:wght@500;600;700&family=Merriweather:ital,wght@1,900&family=Oleo+Script:wght@700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
     @viteReactRefresh
     @vite(['resources/js/app.tsx', 'resources/css/app.css'])
     @inertiaHead

@@ -3,6 +3,7 @@ import { BedDouble, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Gem,
 import { Fragment, useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from 'react';
 import DateRangePicker, { type DateRange } from '../../Components/DateRangePicker';
 import GoogleButton from '../../Components/GoogleButton';
+import PageSign from '../../Components/PageSign';
 import GuestShell, { type SiteTenant } from '../../Components/GuestShell';
 import { RoomDialog, roomPhotos } from '../../Components/RoomShowcase';
 import { includedGuests, money, pricingLabel, rateUnit, time12, type AddOn, type Property, type Quote, type Room } from '../../types';
@@ -292,9 +293,7 @@ export default function Book({ property, tenant, bookable, selection = {}, addOn
     <Head title={`Book | ${tenant?.business_name || property.name}`}/>
     <div className="ac-book container">
       <header className="ac-book-head">
-        <p className="ac-eyebrow">Reservation request</p>
-        <h1 className="ac-title mt-3">Book your visit</h1>
-        <p className="mt-2 text-slate">Send your request now; pay the downpayment only after we confirm your dates.</p>
+        <PageSign eyebrow="Reservation request" title="Book *your visit*">Send your request now; pay the downpayment only after we confirm your dates.</PageSign>
         <ol className="ac-stepper" aria-label="Booking steps">{STEPS.map((label, i) => <li key={label} aria-current={i === step ? 'step' : undefined} className={i < step ? 'done' : i === step ? 'current' : ''}>
           <button type="button" disabled={i > step} onClick={() => setStep(i)}><span>{i < step ? <Check size={14}/> : i + 1}</span>{label}</button>
         </li>)}

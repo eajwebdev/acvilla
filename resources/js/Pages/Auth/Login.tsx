@@ -35,8 +35,8 @@ export default function Login({ google = false, return: back }: { google?: boole
     </section>}
     {google && <p className="mt-8 flex items-center gap-3 text-xs font-semibold uppercase tracking-wider text-slate before:h-px before:flex-1 before:bg-slate-200 after:h-px after:flex-1 after:bg-slate-200">Owner &amp; staff</p>}
     <form onSubmit={e => { e.preventDefault(); form.post('/login', { onFinish: () => form.reset('password') }); }} className="mt-8 grid gap-5">
-      <label className="field">Email address
-        <input type="email" required autoFocus={!google} autoComplete="email" placeholder={google ? 'owner@acvilla.ph' : 'you@example.com'} value={form.data.email} onChange={e => form.setData('email', e.target.value)} aria-invalid={Boolean(form.errors.email)}/>
+      <label className="field">Email or username
+        <input type="text" required autoFocus={!google} autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder={google ? 'owner@acvilla.ph' : 'you@example.com'} value={form.data.email} onChange={e => form.setData('email', e.target.value)} aria-invalid={Boolean(form.errors.email)}/>
         {form.errors.email && <span className="field-error">{form.errors.email}</span>}
       </label>
       <label className="field">Password

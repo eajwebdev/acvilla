@@ -1,6 +1,7 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowRight, CalendarDays, Luggage, MapPin, Star, Users } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
+import PageSign from '../../Components/PageSign';
 import GuestShell from '../../Components/GuestShell';
 import { iso, Status } from '../../Components/ops';
 import { money, type Booking } from '../../types';
@@ -21,10 +22,10 @@ export default function Bookings({ bookings }: { bookings: Booking[] }) {
   return <GuestShell tenant={null}><Head title="My bookings"/>
     <div className="container min-h-[65vh] py-12 sm:py-16">
       <div className="flex flex-wrap items-end justify-between gap-5">
-        <div><p className="section-eyebrow">Your journeys</p><h1 className="section-title mt-3">My bookings</h1><p className="mt-3 text-slate">Reservations, payments and reviews for every stay.</p></div>
+        <PageSign eyebrow="Your journeys" title="My *bookings*">Reservations, payments and reviews for every stay.</PageSign>
         <Link href="/stays" className="btn btn-light">Plan another stay <ArrowRight size={17}/></Link>
       </div>
-      {bookings.length > 0 && <div role="tablist" aria-label="Booking filter" className="mt-9 inline-flex gap-1 rounded-2xl border border-[var(--border)] bg-white p-1">
+      {bookings.length > 0 && <div role="tablist" aria-label="Booking filter" className="ac-card mt-9 inline-flex gap-1 p-1">
         {(Object.keys(labels) as Tab[]).map(key => <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${tab === key ? 'bg-navy text-white shadow' : 'text-slate hover:text-navy'}`}>{labels[key]} <span className={`ml-1 text-xs ${tab === key ? 'text-white/70' : 'text-slate/70'}`}>{counts[key]}</span></button>)}
       </div>}
       <div className="mt-6 grid gap-4">

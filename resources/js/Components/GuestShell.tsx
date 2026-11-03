@@ -85,24 +85,25 @@ export default function GuestShell({ tenant, children }: GuestShellProps) {
   return <div className="guest-site ac-site flex min-h-screen flex-col" style={{ '--guest-primary': primary, '--guest-accent': accent } as React.CSSProperties}>
     <FlashToast/>
     <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:font-semibold">Skip to content</a>
-    <header className={`ac-header ${onHome ? 'ac-header-home' : ''} ${scrolled ? 'is-scrolled' : ''}`}>
+    {!onHome && <div className="ac-page-sky" aria-hidden="true"/>}
+    <header className={`ac-header ac-header-home ${scrolled ? 'is-scrolled' : ''}`}>
       <div className="ac-topbar" aria-label="Contact">
         <div className="container flex h-full items-center justify-between gap-6">
-          <p className="inline-flex min-w-0 items-center gap-2 truncate"><MapPin size={14} className="shrink-0"/>{tenant?.business_address || 'North Poblacion, Mabinay, Negros Oriental'}</p>
-          <div className="flex shrink-0 items-center gap-5">
-            {phones.length > 0 && <span className="inline-flex items-center gap-2"><Phone size={14}/>{phones.map((phone, i) => <span key={phone}>{i > 0 && <span className="mr-2 opacity-50">/</span>}<a href={tel(phone)}>{phone}</a></span>)}</span>}
-            {facebook && <a href={facebook} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5"><Facebook size={15}/> Message us</a>}
+          <p className="ac-top-address inline-flex min-w-0 items-center gap-2 truncate"><span className="ac-top-icon"><MapPin size={14} className="shrink-0"/></span>{tenant?.business_address || 'North Poblacion, Mabinay, Negros Oriental'}</p>
+          <div className="ac-top-contact flex shrink-0 items-center gap-5">
+            {phones.length > 0 && <span className="ac-top-phones inline-flex items-center gap-2"><span className="ac-top-icon"><Phone size={14}/></span>{phones.map((phone, i) => <span key={phone}>{i > 0 && <span className="ac-top-slash mr-2 opacity-50">/</span>}<a href={tel(phone)}>{phone}</a></span>)}</span>}
+            {facebook && <a href={facebook} target="_blank" rel="noreferrer" className="ac-top-message inline-flex items-center gap-1.5"><span className="ac-top-icon"><Facebook size={15}/></span> Message us</a>}
           </div>
         </div>
       </div>
-      <div className={`ac-mainbar ${onHome ? 'ac-mainbar-home' : ''}`}>
+      <div className="ac-mainbar ac-mainbar-home">
         <div className="container flex h-full items-center gap-4">
-          <div className="min-w-0 shrink">{tenant?.logo ? <Link href={home} aria-label={`${name} home`}><img src={tenant.logo} alt={name} className="max-h-12 w-auto max-w-[220px] object-contain"/></Link> : <Brand href={home} compact={!onHome} plank={onHome}/>}</div>
+          <div className="min-w-0 shrink">{tenant?.logo ? <Link href={home} aria-label={`${name} home`}><img src={tenant.logo} alt={name} className="max-h-12 w-auto max-w-[220px] object-contain"/></Link> : <Brand href={home} plank/>}</div>
           <nav aria-label="Main" className="ac-nav">
             <Link href={home} aria-current={onHome && !active ? 'page' : undefined}>Home</Link>
             {sections.map(([id, label]) => <a key={id} href={`${home}#${id}`} aria-current={current(id)}>{label}</a>)}
           </nav>
-          <div className="ml-auto flex shrink-0 items-center gap-2">
+          <div className="ac-bar-actions ml-auto flex shrink-0 items-center gap-2">
             {auth.user && account && <DropdownMenu.Root modal={false}>
               <DropdownMenu.Trigger className="ac-account hidden lg:inline-flex" aria-label="Your account">{auth.user.avatar ? <img src={auth.user.avatar} alt="" referrerPolicy="no-referrer" className="size-8 rounded-full"/> : <span className="ac-avatar">{auth.user.name.trim().charAt(0).toUpperCase() || <UserRound size={16}/>}</span>}<ChevronDown size={15}/></DropdownMenu.Trigger>
               <DropdownMenu.Portal><DropdownMenu.Content align="end" sideOffset={10} className="ac-menu animate-fade">
@@ -115,7 +116,7 @@ export default function GuestShell({ tenant, children }: GuestShellProps) {
             {!auth.user && <a className="ac-signin hidden lg:inline-flex" href={signIn}>{googleLogin ? <GoogleG size={18}/> : <UserRound size={17}/>} Sign in</a>}
             {!auth.user && <a className="ac-icon-btn inline-grid lg:hidden" href={signIn} aria-label={googleLogin ? 'Sign in with Google' : 'Sign in'}>{googleLogin ? <GoogleG size={19}/> : <UserRound size={20}/>}</a>}
             {auth.user && <Link className="ac-icon-btn inline-grid lg:hidden" href={account!.href} aria-label={account!.label}>{auth.user.avatar ? <img src={auth.user.avatar} alt="" referrerPolicy="no-referrer" className="size-7 rounded-full"/> : <span className="ac-avatar">{auth.user.name.trim().charAt(0).toUpperCase()}</span>}</Link>}
-            {auth.user?.role === 'GUEST' && <Link className="ac-mybook hidden lg:inline-flex" href="/booking" aria-current={path === '/booking' ? 'page' : undefined}><CalendarCheck2 size={17}/> My bookings</Link>}
+            {auth.user?.role === 'GUEST' && <Link className="ac-mybook hidden lg:inline-flex" href="/booking" title="My bookings" aria-current={path === '/booking' ? 'page' : undefined}><CalendarCheck2 size={17}/> My bookings</Link>}
             <Link className="ac-nav-cta hidden sm:inline-flex" href={book}><CalendarDays size={17}/> Book Now</Link>
             {phones[0] && <a href={tel(phones[0])} className="ac-icon-btn inline-grid lg:hidden" aria-label={`Call ${phones[0]}`}><Phone size={19}/></a>}
             <button type="button" className="ac-icon-btn inline-grid lg:hidden" aria-label="Open menu" aria-expanded={open} aria-controls="guest-navigation" onClick={() => setOpen(true)}><Menu size={22}/></button>
@@ -152,15 +153,15 @@ export default function GuestShell({ tenant, children }: GuestShellProps) {
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
-    <main id="main" className="page-enter flex-1">{children}</main>
-    <footer className="guest-footer">
+    <main id="main" className={`page-enter flex-1 ${onHome ? '' : 'ac-page'}`}>{children}</main>
+    <footer className="guest-footer ac-footer-home">
       <div className="container grid gap-10 py-16 md:grid-cols-[1.4fr_1fr_1.2fr]">
         <div>
-          {onHome ? <Link href={home} aria-label={`${name} home`}><img src="/images/acvilla/ui/logo-plaque.png" alt={name} className="ac-footer-plaque"/></Link> : <Brand href={home}/>}
+          <Link href={home} aria-label={`${name} home`}><img src="/images/acvilla/ui/footer-logo.webp" alt={name} width={233} height={87} className="ac-footer-logo"/></Link>
           {content?.footer_tagline && <p className="ac-display mt-6 max-w-sm text-lg italic text-[#FFD84D]">{content.footer_tagline}</p>}
           {content?.footer_about && <p className="mt-3 max-w-sm text-sm leading-7 text-white/65">{content.footer_about}</p>}
         </div>
-        <div><h3 className="font-serif text-lg font-semibold">Explore</h3><div className="mt-4 grid gap-3 text-sm text-white/70">
+        <div><h3 className="font-serif text-lg font-semibold">Explore</h3><div className="ac-footer-explore mt-4 grid gap-3 text-sm text-white/70">
           {sections.map(([id, label]) => <a key={id} href={`${home}#${id}`} className="hover:text-white">{label}</a>)}
           {auth.user?.role === 'GUEST' && <Link href="/booking" className="hover:text-white">My bookings</Link>}
           {auth.user?.role === 'GUEST' ? <button type="button" onClick={() => router.post('/logout')} className="text-left hover:text-white">Sign out</button>

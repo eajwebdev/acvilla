@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, BedDouble, Check, Clock3, Images, MapPin, PhoneC
 import { useMemo, useState } from 'react';
 import GuestShell, { type SiteTenant } from '../../Components/GuestShell';
 import ImageGallery from '../../Components/ImageGallery';
+import PageSign from '../../Components/PageSign';
 import { RoomDialog, roomPhotos } from '../../Components/RoomShowcase';
 import type { Property, Room } from '../../types';
 import { includedGuests, money, rateUnit, roomSpecs, time12, type AddOn } from '../../types';
@@ -41,16 +42,16 @@ export default function Stay({ property, tenant, bookable, selection, reviews = 
       <meta name="description" content={property.short_description || property.description || `Book ${property.name} in ${property.city}, ${property.province}.`}/>
     </Head>
     <div className="container pb-32 pt-6 sm:pt-9 lg:pb-16">
-      <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm font-semibold text-slate"><Link href={`/${tenant ? `?tenant=${encodeURIComponent(tenant.slug)}` : ''}`} className="inline-flex items-center gap-1.5 hover:text-navy"><ArrowLeft size={16}/> Home</Link><span aria-hidden="true">/</span><span className="truncate text-navy">{property.name}</span></nav>
-      <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0"><h1 className="ac-display text-4xl font-medium leading-[1.05] sm:text-5xl">{property.name}</h1>
-          <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-slate"><span className="inline-flex items-center gap-1"><MapPin size={16}/>{property.city}, {property.province}</span>{reviewSummary?.average && <a href="#guest-reviews" className="inline-flex items-center gap-1 font-semibold text-navy hover:underline"><Star size={15} className="fill-amber-400 text-amber-400"/>{reviewSummary.average} · {reviewSummary.count} {reviewSummary.count === 1 ? 'review' : 'reviews'}</a>}</p></div>
+      <nav aria-label="Breadcrumb" className="ac-crumbs flex w-fit max-w-full items-center gap-1.5 text-sm font-semibold text-slate"><Link href={`/${tenant ? `?tenant=${encodeURIComponent(tenant.slug)}` : ''}`} className="inline-flex items-center gap-1.5 hover:text-navy"><ArrowLeft size={16}/> Home</Link><span aria-hidden="true">/</span><span className="truncate text-navy">{property.name}</span></nav>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+        <div className="min-w-0"><PageSign title={property.name}/>
+          <p className="ac-page-sub mt-3 flex flex-wrap items-center gap-x-3 gap-y-1"><span className="inline-flex items-center gap-1"><MapPin size={16}/>{property.city}, {property.province}</span>{reviewSummary?.average && <a href="#guest-reviews" className="inline-flex items-center gap-1 font-semibold hover:underline"><Star size={15} className="fill-amber-400 text-amber-400"/>{reviewSummary.average} · {reviewSummary.count} {reviewSummary.count === 1 ? 'review' : 'reviews'}</a>}</p></div>
         <div className="flex items-center gap-2"><ShareButton title={property.name}/>{bookable && <Link href={bookHref()} className="ac-btn ac-btn-primary hidden !min-h-11 sm:inline-flex">Book now <ArrowRight size={17}/></Link>}</div>
       </div>
       {gallery.length ? <ImageGallery variant="mosaic" className="mt-6" items={gallery}/> : <div className="mt-6 h-64 rounded-3xl bg-slate-200"/>}
 
-      <div className="mt-9 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-12">
-        <div className="min-w-0">
+      <div className="mt-9 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-10">
+        <div className="ac-card min-w-0 p-5 sm:p-7">
           <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--border)] sm:grid-cols-4">
             {[[Users, 'Guests', `Up to ${maxGuests}`], [BedDouble, 'Rooms & halls', String(property.rooms.length)], [Clock3, 'Check-in', rules ? time12(rules.check_in_time) : 'Flexible'], [Wallet, 'Rooms from', Number.isFinite(lowest) ? `${money(lowest)} / night` : '-']].map(([Icon, label, value]) => { const I = Icon as typeof Users; return <div key={label as string} className="bg-white p-4"><dt className="flex items-center gap-1.5 text-xs font-semibold text-slate"><I size={14} style={{ color: 'var(--guest-accent)' }}/>{label as string}</dt><dd className="mt-1 font-bold">{value as string}</dd></div>; })}
           </dl>
@@ -73,7 +74,7 @@ export default function Stay({ property, tenant, bookable, selection, reviews = 
           {rules && <p className="mt-4 text-xs leading-5 text-slate">Check-in from {time12(rules.check_in_time)} · Check-out by {time12(rules.check_out_time)}</p>}
         </aside>
       </div>
-      {reviews.length > 0 && <section className="mt-14 border-t border-slate-200 pt-10" aria-labelledby="guest-reviews"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="section-eyebrow">Guest reviews</p><h2 id="guest-reviews" className="section-title mt-2">Stayed here, loved here.</h2></div><p className="flex items-center gap-2 font-semibold"><Star size={19} className="fill-amber-400 text-amber-400"/>{reviewSummary?.average} from {reviewSummary?.count} {reviewSummary?.count === 1 ? 'review' : 'reviews'}</p></div><div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">{reviews.map(review => <article key={review.id} className="rounded-2xl bg-white p-5 shadow-sm"><div className="flex gap-1" aria-label={`${review.rating} out of 5 stars`}>{Array.from({ length: 5 }, (_, index) => <Star key={index} size={15} className={index < review.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-200'}/>)}</div><p className="mt-3 text-sm leading-6">{review.comment || 'A great stay.'}</p><p className="mt-4 text-xs font-semibold text-slate">{review.user?.name || 'Verified guest'}</p></article>)}</div></section>}
+      {reviews.length > 0 && <section className="ac-card mt-10 p-5 sm:p-7" aria-labelledby="guest-reviews"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="section-eyebrow">Guest reviews</p><h2 id="guest-reviews" className="section-title mt-2">Stayed here, loved here.</h2></div><p className="flex items-center gap-2 font-semibold"><Star size={19} className="fill-amber-400 text-amber-400"/>{reviewSummary?.average} from {reviewSummary?.count} {reviewSummary?.count === 1 ? 'review' : 'reviews'}</p></div><div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">{reviews.map(review => <article key={review.id} className="rounded-2xl bg-white p-5 shadow-sm"><div className="flex gap-1" aria-label={`${review.rating} out of 5 stars`}>{Array.from({ length: 5 }, (_, index) => <Star key={index} size={15} className={index < review.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-200'}/>)}</div><p className="mt-3 text-sm leading-6">{review.comment || 'A great stay.'}</p><p className="mt-4 text-xs font-semibold text-slate">{review.user?.name || 'Verified guest'}</p></article>)}</div></section>}
     </div>
     <RoomDialog room={viewing} fallbackPhoto={property.cover_image} reserveHref={viewing && bookable ? bookHref(viewing) : undefined} open={!!viewing} onOpenChange={next => { if (!next) setViewing(null); }}/>
     {bookable && <div className="ac-book-bar lg:hidden">

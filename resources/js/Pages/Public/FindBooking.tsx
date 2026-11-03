@@ -2,6 +2,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowRight, CalendarCheck2, CalendarDays, CalendarPlus, Check, History, LoaderCircle, Mail, Pencil, Phone, Search, Users, X } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import GoogleButton from '../../Components/GoogleButton';
+import PageSign from '../../Components/PageSign';
 import GuestShell, { type SiteTenant } from '../../Components/GuestShell';
 import { forgetBooking, saveBooking, savedBookings, type SavedBooking } from '../../Components/myBookings';
 import { money } from '../../types';
@@ -89,8 +90,8 @@ export default function FindBooking({ tenant, account = null }: { tenant: SiteTe
   return <GuestShell tenant={tenant}>
     <Head title="My bookings"/>
     <div className="container max-w-4xl py-8 sm:py-14">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div><p className="ac-eyebrow">My bookings</p><h1 className="ac-title mt-3 !text-4xl sm:!text-5xl">{guest ? `Hi, ${guest.name.split(' ')[0]}` : 'Your bookings'}</h1></div>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <PageSign eyebrow="My bookings" title={guest ? `Hi, *${guest.name.split(' ')[0]}*` : 'Your *bookings*'}/>
         <Link href={`/book${query}`} className="ac-btn ac-btn-primary !min-h-11"><CalendarPlus size={18}/> Book a stay or event</Link>
       </div>
 

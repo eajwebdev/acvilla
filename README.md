@@ -25,6 +25,17 @@ On Windows PowerShell with script execution disabled, use `npm.cmd` and `npx.cmd
 
 The Laravel scheduler must run every minute in deployment (`php artisan schedule:run` via cron or Task Scheduler). See **Operations** below for what it does.
 
+## Local sign-ins
+
+With `APP_ENV=local`, `php artisan db:seed` creates these accounts. They are never created in any other environment, and `php artisan app:production-check` fails if a staff account uses one of these passwords.
+
+| Role | Username | Password |
+| --- | --- | --- |
+| Superadmin | `superadmin` | `superadmin@123` |
+| Administrator | `administrator` | `Admin@123` |
+| Staff | `staff` | `staff@123` |
+| Guest | `guest` | `guest@123` |
+
 ## Demo
 
 Set `DEMO=true` in `.env` and run `php artisan db:seed`. The seed is repeatable and fills two tenants, four published properties, seven rooms, five sample bookings, price snapshots, three payment records, and a maintenance block. With `DEMO=false`, a normal seed creates only the monthly and annual plans. Demo credentials are never seeded by `DatabaseSeeder` in production.
@@ -43,7 +54,7 @@ Change these passwords or omit the demo seed in a real deployment. `DEMO=false` 
 
 ## Current scope
 
-The platform quotation is an in-app page at `/quotation` (also reachable by opening `/quote` in a browser). Its monthly base price, website options, and add-on prices are defined near the top of `resources/js/Pages/Public/Quotation.tsx` for later editing. The `/quote` endpoint still returns room price calculations to the stay page when called with booking parameters.
+The platform quotation is an in-app page at `/quotation` (also reachable by opening `/quote` in a browser). Its monthly base price (which includes the landing page, booking website and customer accounts) and add-on prices are defined near the top of `resources/js/Pages/Public/Quotation.tsx` for later editing. The `/quote` endpoint still returns room price calculations to the stay page when called with booking parameters.
 
 - Public landing page, stay search, property page, guest checkout, price snapshot, manual payment request, and mock payment confirmation.
 - Guest registration and login, role dashboards, tenant-scoped property and room creation, manual bookings, booking status changes, manual payment records, and superadmin client onboarding, status, and plan assignment.

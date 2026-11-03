@@ -21,7 +21,7 @@ class ProductionCheck extends Command
     protected $description = 'Check that this server is safe to run the live site';
 
     /** Passwords that were only ever meant for local machines and demos. */
-    private const KNOWN_PASSWORDS = ['password', 'secret', 'Password123!', '12345678'];
+    private const KNOWN_PASSWORDS = ['password', 'secret', 'Password123!', '12345678', 'superadmin@123', 'Admin@123', 'staff@123'];
 
     private int $failed = 0;
 

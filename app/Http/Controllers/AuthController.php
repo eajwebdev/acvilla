@@ -35,8 +35,10 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-        $credentials = $request->validate(['email' => 'required|email', 'password' => 'required|string']);
-        if (! Auth::attempt([...$credentials, fn ($query) => $query->whereNull('deactivated_at')], $request->boolean('remember'))) {
+        $credentials = $request->validate(['email' => 'required|string', 'password' => 'required|string']);
+        // The one sign-in box takes an email address or a username.
+        $login = str_contains($credentials['email'], '@') ? ['email' => $credentials['email']] : ['username' => $credentials['email']];
+        if (! Auth::attempt([...$login, 'password' => $credentials['password'], fn ($query) => $query->whereNull('deactivated_at')], $request->boolean('remember'))) {
             return back()->withErrors(['email' => 'The credentials are invalid.']);
         }
         $request->session()->regenerate();

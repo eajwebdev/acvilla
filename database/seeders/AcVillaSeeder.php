@@ -22,6 +22,14 @@ class AcVillaSeeder extends Seeder
     /** Units from the first version of this seeder become the four rooms on the rate card, so their bookings stay on the same building. */
     private const RENAMED = ['a-house-1' => 'barkada-room', 'a-house-2' => 'ah-room-1', 'a-house-3' => 'ah-room-2', 'a-house-4' => 'ah-room-3'];
 
+    /** Username, password, name, role, and whether the account belongs to the resort. */
+    private const LOCAL_LOGINS = [
+        ['superadmin', 'superadmin@123', 'Super Administrator', 'SUPERADMIN', false],
+        ['administrator', 'Admin@123', 'Administrator', 'ADMIN', true],
+        ['staff', 'staff@123', 'Staff', 'STAFF', true],
+        ['guest', 'guest@123', 'Guest', 'GUEST', false],
+    ];
+
     public function run(): void
     {
         DB::transaction(function (): void {
@@ -101,6 +109,14 @@ Cancellation terms are agreed with the owner when we call you."]]);
             if (filled(env('ACVILLA_ADMIN_EMAIL')) && filled(env('ACVILLA_ADMIN_PASSWORD'))) {
                 User::updateOrCreate(['email' => env('ACVILLA_ADMIN_EMAIL')], ['name' => 'AC Villa Owner',
                     'password' => Hash::make(env('ACVILLA_ADMIN_PASSWORD')), 'role' => 'ADMIN', 'tenant_id' => $tenant->id]);
+            }
+
+            // Simple sign-ins for this computer only: these passwords must never reach the live site.
+            if (app()->environment('local')) {
+                foreach (self::LOCAL_LOGINS as [$username, $password, $name, $role, $staff]) {
+                    User::updateOrCreate(['username' => $username], ['name' => $name, 'email' => "{$username}@acvilla.test",
+                        'password' => Hash::make($password), 'role' => $role, 'tenant_id' => $staff ? $tenant->id : null]);
+                }
             }
         });
     }

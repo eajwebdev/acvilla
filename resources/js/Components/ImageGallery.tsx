@@ -5,7 +5,7 @@ import { useState } from 'react';
 export type GalleryItem = { src: string; alt: string; caption?: string };
 
 /** Photos that open a full-screen lightbox. `mosaic` is the stay-page hero: one large photo and up to four more, swipeable on phones. */
-export default function ImageGallery({ items, className = '', imageClassName = 'h-64', variant = 'grid' }: { items: GalleryItem[]; className?: string; imageClassName?: string; variant?: 'grid' | 'mosaic' }) {
+export default function ImageGallery({ items, className = '', imageClassName = 'h-64', variant = 'grid', renderCaption }: { items: GalleryItem[]; className?: string; imageClassName?: string; variant?: 'grid' | 'mosaic'; renderCaption?: (caption: string) => React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
   const [touch, setTouch] = useState<number | null>(null);
@@ -16,7 +16,7 @@ export default function ImageGallery({ items, className = '', imageClassName = '
   const tile = (item: GalleryItem, i: number, extra = '', img = imageClassName) => <button type="button" key={`${item.src}-${i}`} className={`group relative overflow-hidden bg-slate-200 text-left ${extra}`} onClick={() => show(i)} aria-label={`View photo: ${item.alt}`}>
     <img src={item.src} alt={item.alt} loading={i === 0 ? 'eager' : 'lazy'} className={`${img} w-full object-cover transition duration-700 group-hover:scale-[1.04]`}/>
     <span className="absolute inset-0 bg-black/0 transition group-hover:bg-black/10"/>
-    {item.caption && <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-5 pt-12 text-lg font-semibold text-white">{item.caption}</span>}
+    {item.caption && (renderCaption ? renderCaption(item.caption) : <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-5 pt-12 text-lg font-semibold text-white">{item.caption}</span>)}
   </button>;
 
   const mosaic = items.slice(0, items.length >= 5 ? 5 : items.length >= 3 ? 3 : items.length);

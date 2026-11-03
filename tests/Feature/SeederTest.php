@@ -31,6 +31,40 @@ class SeederTest extends TestCase
         $this->assertEquals(3999, SubscriptionPlan::where('code', 'MONTHLY')->value('billing_price'));
     }
 
+    public function test_local_seed_creates_username_logins_that_can_sign_in(): void
+    {
+        $this->app['env'] = 'local';
+        $this->seed();
+        $this->seed();
+        $this->app['env'] = 'testing';
+
+        $tenant = Tenant::where('slug', 'ac-villa')->firstOrFail();
+        $this->assertDatabaseCount('users', 4);
+        $this->assertSame(['ADMIN', $tenant->id], [User::where('username', 'administrator')->value('role'), User::where('username', 'administrator')->value('tenant_id')]);
+        $this->assertSame(['STAFF', $tenant->id], [User::where('username', 'staff')->value('role'), User::where('username', 'staff')->value('tenant_id')]);
+        $this->assertSame(['SUPERADMIN', null], [User::where('username', 'superadmin')->value('role'), User::where('username', 'superadmin')->value('tenant_id')]);
+        $this->assertSame(['GUEST', null], [User::where('username', 'guest')->value('role'), User::where('username', 'guest')->value('tenant_id')]);
+
+        $this->post('/login', ['email' => 'administrator', 'password' => 'wrong'])->assertSessionHasErrors('email');
+        $this->assertGuest();
+        foreach ([['superadmin', 'superadmin@123'], ['administrator', 'Admin@123'], ['staff', 'staff@123'], ['guest', 'guest@123']] as [$username, $password]) {
+            $this->post('/login', ['email' => $username, 'password' => $password])->assertSessionHasNoErrors();
+            $this->assertAuthenticatedAs(User::where('username', $username)->sole());
+            $this->post('/logout');
+        }
+    }
+
+    public function test_a_deactivated_username_cannot_sign_in(): void
+    {
+        $this->app['env'] = 'local';
+        $this->seed();
+        $this->app['env'] = 'testing';
+        User::where('username', 'staff')->update(['deactivated_at' => now()]);
+
+        $this->post('/login', ['email' => 'staff', 'password' => 'staff@123'])->assertSessionHasErrors('email');
+        $this->assertGuest();
+    }
+
     public function test_demo_seed_populates_two_tenants_and_is_repeatable(): void
     {
         $this->seed(DemoSeeder::class);

@@ -636,6 +636,11 @@ class PublicController extends Controller
     }
 
     /** Guest pages also get the editable website content (hidden from every other tenant payload). */
+    public function quotation(Request $request)
+    {
+        return Inertia::render('Public/Quotation', ['tenant' => $this->site($this->siteTenant($request))]);
+    }
+
     private function site(?Tenant $tenant): ?Tenant
     {
         return $tenant?->makeVisible('site_content');

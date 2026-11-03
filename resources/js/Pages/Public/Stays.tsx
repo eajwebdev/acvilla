@@ -3,6 +3,7 @@ import { ArrowDown, ArrowRight, ArrowUpRight, MapPin, Search } from 'lucide-reac
 import { useState } from 'react';
 import DateRangePicker, { type DateRange } from '../../Components/DateRangePicker';
 import GuestShell, { type SiteTenant } from '../../Components/GuestShell';
+import PageSign from '../../Components/PageSign';
 import { money, type Property } from '../../types';
 import '../../../css/stays.css';
 
@@ -37,8 +38,7 @@ export default function Stays({ tenant, properties, filters }: {
 
       <section className="sl-hero" aria-labelledby="sl-hero-title">
         <div className="sl-hero-copy">
-          <p className="sl-eyebrow">{tenant?.business_name || 'AC Villa'} <span>/</span> ROOMS &amp; VILLAS</p>
-          <h1 id="sl-hero-title">Stay in our<br/><em>cozy villas.</em></h1>
+          <div id="sl-hero-title"><PageSign eyebrow="Rooms & villas" title="Stay in Our *Cozy Villas*"/></div>
           <p className="sl-hero-description">Experience comfort and relaxation in our well-appointed villas, designed for a truly restful stay.</p>
           <div className="sl-hero-actions">
             <a href="#find-stay" className="sl-button sl-button-accent">Reserve your stay <ArrowUpRight size={18}/></a>
@@ -63,14 +63,14 @@ export default function Stays({ tenant, properties, filters }: {
       </section>
 
       <section id="collection" className="sl-collection" aria-labelledby="sl-collection-title">
-        <div className="sl-section-head"><div><p className="sl-eyebrow">ROOMS &amp; VILLAS</p><h2 id="sl-collection-title">Your private escape.</h2></div><p>A-frame villas, family rooms and the whole resort for weddings and celebrations.</p></div>
+        <div className="sl-section-head"><div id="sl-collection-title"><PageSign as="h2" eyebrow="Rooms & villas" title="Your *Private Escape*"/></div><p>A-frame villas, family rooms and the whole resort for weddings and celebrations.</p></div>
         {properties.data.length ? <div className="sl-property-grid">{properties.data.map((property, index) => <LandingStayCard key={property.id} property={property} href={`/stays/${property.slug}?${stayQuery}`} index={index + 1}/>)}</div> : <div className="sl-empty"><p className="sl-eyebrow">NO MATCHES YET</p><h3>Nothing is free for these dates.</h3><p>Try other dates, or call us. We may still be able to help.</p><Link href={homeUrl} className="sl-button sl-button-dark">View all villas <ArrowRight size={17}/></Link></div>}
         {properties.links?.length > 3 && <nav aria-label="Pagination" className="sl-pagination">{properties.links.map((link, index) => link.url ? <Link key={index} href={link.url} className={link.active ? 'is-active' : ''} dangerouslySetInnerHTML={{ __html: link.label }}/> : null)}</nav>}
       </section>
 
-      <section className="sl-how" aria-labelledby="sl-how-title"><div className="sl-how-heading"><p className="sl-eyebrow">HOW BOOKING WORKS</p><h2 id="sl-how-title">Request,<br/>we call, relax.</h2><p>No payment online. The owner confirms every booking personally.</p></div><div className="sl-steps"><div><span>01</span><h3>Choose your villa.</h3><p>Pick your dates, room and the kind of stay or event you are planning.</p></div><div><span>02</span><h3>Send your request.</h3><p>Leave your name and mobile number. Your dates are held while we get in touch.</p></div><div><span>03</span><h3>We call to confirm.</h3><p>The owner calls you to confirm the booking and arrange payment.</p></div></div></section>
+      <section className="sl-how" aria-labelledby="sl-how-title"><div className="sl-how-heading"><div id="sl-how-title"><PageSign as="h2" eyebrow="How booking works" title="Request, We Call, *Relax*"/></div><p>No payment online. The owner confirms every booking personally.</p></div><div className="sl-steps"><div><span>01</span><h3>Choose your villa.</h3><p>Pick your dates, room and the kind of stay or event you are planning.</p></div><div><span>02</span><h3>Send your request.</h3><p>Leave your name and mobile number. Your dates are held while we get in touch.</p></div><div><span>03</span><h3>We call to confirm.</h3><p>The owner calls you to confirm the booking and arrange payment.</p></div></div></section>
 
-      <section className="sl-final" aria-labelledby="sl-final-title"><p className="sl-eyebrow">YOUR PRIVACY, MORE MEMORIES, MORE LOVE</p><h2 id="sl-final-title">Ready to book<br/><em>your stay?</em></h2><a href="#find-stay" className="sl-button sl-button-accent">Reserve now <ArrowUpRight size={18}/></a></section>
+      <section className="sl-final" aria-labelledby="sl-final-title"><div id="sl-final-title"><PageSign as="h2" eyebrow="Your privacy, more memories, more love" title="Ready to Book *Your Stay?*"/></div><a href="#find-stay" className="sl-button sl-button-accent">Reserve now <ArrowUpRight size={18}/></a></section>
   </div></GuestShell>;
 }
 
