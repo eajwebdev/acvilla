@@ -1,21 +1,74 @@
+<?php
+    $brand = $tenant->primary_color ?: '#005A1C';
+    $mark = public_path('branding/acvilla-logo-mark.png');
+    $logo = $tenant->logo ?: (isset($message) && is_file($mark) ? $message->embed($mark) : null);
+    $serif = "Georgia,'Times New Roman',serif";
+    $sans = 'Arial,Helvetica,sans-serif';
+?>
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ $subjectLine }}</title></head>
-<body style="margin:0;padding:0;background:#f4f5f8;font-family:Arial,Helvetica,sans-serif;color:#1f2433;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f8;padding:24px 12px;">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>{{ $subjectLine }}</title>
+</head>
+<body style="margin:0;padding:0;background:#EEF3EC;font-family:{{ $sans }};color:#1F2A24;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">{{ $subjectLine }} · {{ $tenant->business_name }}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EEF3EC;padding:28px 12px;">
     <tr><td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;">
-            <tr><td style="background:{{ $tenant->primary_color }};padding:22px 28px;">
-                @if ($tenant->logo)
-                    <img src="{{ $tenant->logo }}" alt="{{ $tenant->business_name }}" height="36" style="display:block;max-height:36px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #DDE6DA;">
+            <tr><td align="center" style="background:#ffffff;padding:26px 28px 18px;">
+                @if ($logo)
+                    <img src="{{ $logo }}" alt="{{ $tenant->business_name }}" width="132" style="display:block;width:132px;max-width:132px;height:auto;border:0;">
                 @else
-                    <span style="color:#ffffff;font-size:18px;font-weight:bold;">{{ $tenant->business_name }}</span>
+                    <span style="font-family:{!! $serif !!};font-size:24px;font-weight:bold;color:{{ $brand }};">{{ $tenant->business_name }}</span>
                 @endif
             </td></tr>
-            <tr><td style="padding:28px;font-size:15px;line-height:1.6;">{!! nl2br(e($body)) !!}</td></tr>
-            <tr><td style="padding:18px 28px;border-top:1px solid #eceef3;font-size:12px;line-height:1.5;color:#6b7385;">
-                {{ $tenant->business_name }}@if ($tenant->business_phone) · {{ $tenant->business_phone }}@endif @if ($tenant->business_email) · {{ $tenant->business_email }}@endif
-                @if ($tenant->business_address)<br>{{ $tenant->business_address }}@endif
+            <tr><td style="background:{{ $brand }};padding:26px 32px;">
+                <div style="font-size:11px;line-height:16px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;color:#CFE3C9;">{{ $tenant->business_name }}</div>
+                <div style="margin-top:6px;font-family:{!! $serif !!};font-size:26px;line-height:32px;color:#ffffff;">{{ $subjectLine }}</div>
+            </td></tr>
+            <tr><td style="padding:30px 32px 10px;font-size:15px;line-height:24px;color:#1F2A24;">
+                @foreach ($blocks as $block)
+                    @if ($block['type'] === 'greeting')
+                        <p style="margin:0 0 16px;font-family:{!! $serif !!};font-size:21px;line-height:28px;color:{{ $brand }};">{{ $block['text'] }}</p>
+                    @elseif ($block['type'] === 'details')
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;background:#F3F6F1;border-radius:12px;">
+                            <tr><td style="padding:8px 18px;">
+                                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                                    @foreach ($block['rows'] as $row)
+                                        <tr>
+                                            @if ($row['label'] !== null)
+                                                <td valign="top" style="padding:7px 12px 7px 0;font-size:13px;line-height:20px;color:#5F6E66;white-space:nowrap;">{{ $row['label'] }}</td>
+                                                <td valign="top" align="right" style="padding:7px 0;font-size:14px;line-height:20px;font-weight:bold;color:#1F2A24;">{!! $row['value'] !!}</td>
+                                            @else
+                                                <td colspan="2" style="padding:7px 0;font-size:14px;line-height:20px;font-weight:bold;color:{{ $brand }};">{!! $row['value'] !!}</td>
+                                            @endif
+                                        </tr>
+                                    @endforeach
+                                </table>
+                            </td></tr>
+                        </table>
+                    @else
+                        <p style="margin:0 0 16px;">{!! $block['html'] !!}</p>
+                    @endif
+                @endforeach
+            </td></tr>
+            @if ($button)
+                <tr><td align="center" style="padding:6px 32px 30px;">
+                    <a href="{{ $button }}" style="display:inline-block;padding:14px 32px;border-radius:999px;background:{{ $brand }};color:#ffffff;font-size:15px;font-weight:bold;text-decoration:none;">Open my booking</a>
+                </td></tr>
+            @endif
+            <tr><td align="center" style="padding:22px 32px 26px;background:#F7F9F5;border-top:1px solid #E6EDE3;font-size:12px;line-height:19px;color:#5F6E66;">
+                <div style="font-family:{!! $serif !!};font-size:16px;line-height:22px;color:{{ $brand }};">{{ $tenant->business_name }}</div>
+                @if ($tenant->business_phone || $tenant->business_email)
+                    <div style="margin-top:4px;">{{ collect([$tenant->business_phone, $tenant->business_email])->filter()->implode(' · ') }}</div>
+                @endif
+                @if ($tenant->business_address)
+                    <div>{{ $tenant->business_address }}</div>
+                @endif
             </td></tr>
         </table>
     </td></tr>
