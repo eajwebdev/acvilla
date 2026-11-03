@@ -15,7 +15,7 @@ export default function ImageInput({ label, value, onChange, hint, error, compac
   return <div className="field min-w-0 grid-cols-[minmax(0,1fr)]">
     {label && <span>{label}</span>}
     <div className="flex min-w-0 flex-wrap items-center gap-3">
-      <div className={`${compact ? 'size-14' : 'h-20 w-28'} grid shrink-0 place-items-center overflow-hidden rounded-xl border border-[var(--line)] bg-[#F4F7F3]`}>{value ? <img src={value} alt="" className="h-full w-full object-cover"/> : <ImagePlus size={20} className="text-[var(--muted)]"/>}</div>
+      <div className={`${compact ? 'size-14' : 'h-20 w-28'} grid shrink-0 place-items-center overflow-hidden rounded-xl border border-[var(--line)] bg-[#F7F6F3]`}>{value ? <img src={value} alt="" className="h-full w-full object-cover"/> : <ImagePlus size={20} className="text-[var(--muted)]"/>}</div>
       <div className="grid min-w-[150px] flex-1 gap-2">
         <div className="flex flex-wrap gap-2">
           <button type="button" className="btn btn-light btn-sm" disabled={busy} onClick={() => file.current?.click()}>{busy ? <Loader2 size={14} className="animate-spin"/> : <ImagePlus size={14}/>}{busy ? 'Uploading…' : 'Upload photo'}</button>

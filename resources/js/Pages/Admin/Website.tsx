@@ -135,7 +135,7 @@ function Rows<T>({ label, items, max, blank, onChange, render }: { label: string
 }
 
 function IconSelect({ icons, value, onChange }: { icons: string[]; value: string; onChange: (icon: string) => void }) {
-  return <div className="flex items-center gap-2"><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[var(--mint)] text-[#00408C]"><SiteIcon name={value} size={18}/></span>
+  return <div className="flex items-center gap-2"><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[var(--mint)] text-[#002EAD]"><SiteIcon name={value} size={18}/></span>
     <select aria-label="Icon" className="input" value={value} onChange={e => onChange(e.target.value)}>{icons.map(icon => <option key={icon} value={icon}>{icon}</option>)}</select></div>;
 }
 

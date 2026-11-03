@@ -15,7 +15,7 @@ type Props = { tab: 'analytics' | 'finance' | 'expenses'; range: string; period:
 
 const ranges = [['month', 'This month'], ['7d', 'Last 7D'], ['30d', '30D'], ['90d', '90D']] as const;
 const signal: Record<Unit['signal'], [string, string]> = { top: ['Top performer', 'bg-emerald-500'], healthy: ['Healthy', 'bg-sky-500'], below: ['Below portfolio', 'bg-amber-400'], low: ['Low occupancy', 'bg-amber-400'] };
-const tick = { fontSize: 10, fontFamily: 'Jost', fill: '#64736B' };
+const tick = { fontSize: 10, fontFamily: 'Jost', fill: '#5E6679' };
 
 export default function Insights({ tab, range, period, analytics, finance, expenses, categories, rooms }: Props) {
   const visit = (params: Record<string, string>) => router.get('/admin/insights', { tab, range, ...params }, { preserveScroll: true });
@@ -38,22 +38,22 @@ function AnalyticsView({ data, label }: { data: Analytics; label: string }) {
   const maxRevenue = Math.max(...data.units.map(u => u.revenue), 1);
   return <>
     <div className="grid gap-px overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--line)] sm:grid-cols-2 lg:grid-cols-[1.6fr_repeat(4,1fr)]">
-      <div className="bg-[#FAFBF8] p-5"><p className="num text-4xl font-semibold text-forest">{money(m.revenue)}</p><p className="mt-2 flex flex-wrap items-center gap-2 text-sm font-semibold">Revenue · {label}{m.change !== null && <span className={`num flex items-center text-xs ${m.change >= 0 ? 'text-emerald-700' : 'text-[var(--danger)]'}`}>{m.change >= 0 ? <ArrowUp size={12}/> : <ArrowDown size={12}/>}{Math.abs(m.change)}% vs prev {m.days}d</span>}</p></div>
-      {[[`${m.occupancy}%`, 'Occupancy', `${m.occupiedNights} of ${m.availableNights} nights`], [money(m.adr), 'Avg / night', 'per booked night'], [String(m.turnovers), 'Turnovers', `${m.turnoversPerDay} per day`], [`${m.directShare}%`, 'Direct', `${money(m.direct)} fee-free`]].map(([v, l, s]) => <div key={l} className="bg-[#FAFBF8] p-5"><p className="num text-2xl font-semibold">{v}</p><p className="mt-1 text-sm font-semibold">{l}</p><p className="num text-[11px] text-[var(--muted)]">{s}</p></div>)}
+      <div className="bg-[#FBFAF6] p-5"><p className="num text-4xl font-semibold text-forest">{money(m.revenue)}</p><p className="mt-2 flex flex-wrap items-center gap-2 text-sm font-semibold">Revenue · {label}{m.change !== null && <span className={`num flex items-center text-xs ${m.change >= 0 ? 'text-emerald-700' : 'text-[var(--danger)]'}`}>{m.change >= 0 ? <ArrowUp size={12}/> : <ArrowDown size={12}/>}{Math.abs(m.change)}% vs prev {m.days}d</span>}</p></div>
+      {[[`${m.occupancy}%`, 'Occupancy', `${m.occupiedNights} of ${m.availableNights} nights`], [money(m.adr), 'Avg / night', 'per booked night'], [String(m.turnovers), 'Turnovers', `${m.turnoversPerDay} per day`], [`${m.directShare}%`, 'Direct', `${money(m.direct)} fee-free`]].map(([v, l, s]) => <div key={l} className="bg-[#FBFAF6] p-5"><p className="num text-2xl font-semibold">{v}</p><p className="mt-1 text-sm font-semibold">{l}</p><p className="num text-[11px] text-[var(--muted)]">{s}</p></div>)}
     </div>
     <Card className="mt-5" title="Portfolio performance" subtitle={label} bodyClass="grid gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_300px]">
-      <div className="h-72">{m.revenue === 0 && data.series.every(p => p.occupancy === 0) ? <div className="grid h-full place-items-center rounded-xl bg-[#F8FAF7] text-sm font-semibold text-[var(--muted)]">No stays in this period yet.</div>
+      <div className="h-72">{m.revenue === 0 && data.series.every(p => p.occupancy === 0) ? <div className="grid h-full place-items-center rounded-xl bg-[#FAF9F7] text-sm font-semibold text-[var(--muted)]">No stays in this period yet.</div>
         : <ResponsiveContainer width="100%" height="100%"><ComposedChart data={data.series} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
-          <defs><linearGradient id="rev" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#0070C0" stopOpacity={.25}/><stop offset="100%" stopColor="#0070C0" stopOpacity={0}/></linearGradient></defs>
-          <CartesianGrid vertical={false} stroke="#EDF2EB"/>
+          <defs><linearGradient id="rev" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#0039D5" stopOpacity={.25}/><stop offset="100%" stopColor="#0039D5" stopOpacity={0}/></linearGradient></defs>
+          <CartesianGrid vertical={false} stroke="#F3F0EA"/>
           <XAxis dataKey="date" tick={tick} tickFormatter={d => fmtDay(d)} minTickGap={24} axisLine={false} tickLine={false}/>
           <YAxis yAxisId="r" tick={tick} tickFormatter={axisMoney} width={50} axisLine={false} tickLine={false}/>
           <YAxis yAxisId="o" orientation="right" domain={[0, 100]} tick={tick} tickFormatter={v => `${v}%`} width={38} axisLine={false} tickLine={false}/>
           <Tooltip labelFormatter={d => fmtDay(String(d), { weekday: 'short', month: 'short', day: 'numeric' })} formatter={(v, n) => n === 'Occupancy' ? `${v}%` : n === 'Revenue' ? money(Number(v)) : String(v)}/>
           <Legend iconType="plainline" wrapperStyle={{ fontSize: 11, fontWeight: 600 }}/>
-          <Area yAxisId="r" type="monotone" dataKey="revenue" name="Revenue" stroke="#0070C0" strokeWidth={2} fill="url(#rev)"/>
-          <Line yAxisId="o" type="monotone" dataKey="occupancy" name="Occupancy" stroke="#005A1C" strokeWidth={1.5} dot={false}/>
-          <Bar yAxisId="o" dataKey="blocked" name="Owner block" fill="#C9D6C6" barSize={4}/>
+          <Area yAxisId="r" type="monotone" dataKey="revenue" name="Revenue" stroke="#0039D5" strokeWidth={2} fill="url(#rev)"/>
+          <Line yAxisId="o" type="monotone" dataKey="occupancy" name="Occupancy" stroke="#0A2266" strokeWidth={1.5} dot={false}/>
+          <Bar yAxisId="o" dataKey="blocked" name="Owner block" fill="#D8D2C4" barSize={4}/>
         </ComposedChart></ResponsiveContainer>}</div>
       <div className="grid content-start gap-5 lg:border-l lg:border-[var(--line)] lg:pl-5">
         {data.weakest ? <div><p className="text-sm"><span className="mr-1.5 inline-block size-2 rounded-full bg-[var(--danger)]"/><strong className="num">{data.weakest.name}</strong> needs attention</p>
@@ -64,9 +64,9 @@ function AnalyticsView({ data, label }: { data: Analytics; label: string }) {
     </Card>
     <Card className="mt-5" title="Where bookings come from" subtitle="Bookings made in this period, by channel" bodyClass="p-5">
       {data.sources.length === 0 ? <p className="text-sm font-semibold text-[var(--muted)]">No bookings made in this period yet.</p> : <>
-        <div className="flex h-3 overflow-hidden rounded-full bg-[#EDF2EB]">{data.sources.map(s => <span key={s.source} title={`${s.label} ${s.share}%`} style={{ width: `${s.share}%`, background: SOURCE_COLORS[s.source] ?? '#B3BDB6' }}/>)}</div>
+        <div className="flex h-3 overflow-hidden rounded-full bg-[#F3F0EA]">{data.sources.map(s => <span key={s.source} title={`${s.label} ${s.share}%`} style={{ width: `${s.share}%`, background: SOURCE_COLORS[s.source] ?? '#AFB4C1' }}/>)}</div>
         <div className="mt-4 overflow-x-auto"><table className="table w-full min-w-[560px]"><thead><tr><th>Channel</th><th className="text-right">Bookings</th><th className="text-right">Share</th><th className="text-right">Nights</th><th className="text-right">Booked value</th></tr></thead><tbody>
-          {data.sources.map(s => <tr key={s.source}><td><span className="flex items-center gap-2 font-semibold"><span className="size-2.5 rounded-full" style={{ background: SOURCE_COLORS[s.source] ?? '#B3BDB6' }}/>{s.label}{!s.direct && <span className="pill">OTA</span>}</span></td><td className="num text-right">{s.bookings}</td><td className="num text-right">{s.share}%</td><td className="num text-right">{s.nights}</td><td className="num text-right font-semibold">{money(s.value)}</td></tr>)}
+          {data.sources.map(s => <tr key={s.source}><td><span className="flex items-center gap-2 font-semibold"><span className="size-2.5 rounded-full" style={{ background: SOURCE_COLORS[s.source] ?? '#AFB4C1' }}/>{s.label}{!s.direct && <span className="pill">OTA</span>}</span></td><td className="num text-right">{s.bookings}</td><td className="num text-right">{s.share}%</td><td className="num text-right">{s.nights}</td><td className="num text-right font-semibold">{money(s.value)}</td></tr>)}
         </tbody></table></div>
       </>}
     </Card>
@@ -75,8 +75,8 @@ function AnalyticsView({ data, label }: { data: Analytics; label: string }) {
         {data.units.length === 0 && <tr><td colSpan={6}><Empty icon={<ChartLine size={18}/>} title="No units yet"/></td></tr>}
         {data.units.map(u => <tr key={u.id}>
           <td className="num font-semibold">{u.name}<span className="block font-sans text-[11px] text-[var(--muted)]">{u.bookings} stays · {u.nights} nights</span></td>
-          <td><span className="num text-sm">{money(u.revenue)}</span><span className="mt-1 block h-1 w-36 rounded-full bg-[#EDF2EB]"><span className="block h-full rounded-full bg-sea" style={{ width: `${100 * u.revenue / maxRevenue}%` }}/></span></td>
-          <td><span className="num text-sm">{u.occupancy}%</span><span className="mt-1 block h-1 w-36 rounded-full bg-[#EDF2EB]"><span className="block h-full rounded-full bg-forest" style={{ width: `${u.occupancy}%` }}/></span></td>
+          <td><span className="num text-sm">{money(u.revenue)}</span><span className="mt-1 block h-1 w-36 rounded-full bg-[#F3F0EA]"><span className="block h-full rounded-full bg-sea" style={{ width: `${100 * u.revenue / maxRevenue}%` }}/></span></td>
+          <td><span className="num text-sm">{u.occupancy}%</span><span className="mt-1 block h-1 w-36 rounded-full bg-[#F3F0EA]"><span className="block h-full rounded-full bg-forest" style={{ width: `${u.occupancy}%` }}/></span></td>
           <td className="num text-sm">{money(u.adr)}</td>
           <td className="num text-right text-sm">{u.avg_stay ? `${u.avg_stay}n` : '-'}</td>
           <td><span className="flex items-center gap-2 text-xs font-semibold"><span className={`size-2 rounded-full ${signal[u.signal][1]}`}/>{signal[u.signal][0]}</span></td>
@@ -88,7 +88,7 @@ function AnalyticsView({ data, label }: { data: Analytics; label: string }) {
 
 function Totals({ t }: { t: Finance['totals'] }) {
   return <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--line)] lg:grid-cols-5">
-    {[['Collected', t.collected, `${money(t.stay)} stays · ${money(t.pos)} POS`], ['Expenses', -t.expenses, 'recorded this period'], ['Net', t.net, 'collected − expenses'], ['Outstanding', t.outstanding, 'open stay balances'], ['Room charges', t.openRoomCharges, 'POS on folios, unsettled']].map(([l, v, s]) => <div key={l as string} className="min-w-0 bg-[#FAFBF8] p-4"><p className="label">{l}</p><p className={`num mt-2 text-2xl font-semibold ${(v as number) < 0 ? 'text-[var(--danger)]' : ''}`}>{money(v as number)}</p><p className="mt-1 truncate text-[11.5px] font-semibold text-[var(--muted)]">{s}</p></div>)}
+    {[['Collected', t.collected, `${money(t.stay)} stays · ${money(t.pos)} POS`], ['Expenses', -t.expenses, 'recorded this period'], ['Net', t.net, 'collected − expenses'], ['Outstanding', t.outstanding, 'open stay balances'], ['Room charges', t.openRoomCharges, 'POS on folios, unsettled']].map(([l, v, s]) => <div key={l as string} className="min-w-0 bg-[#FBFAF6] p-4"><p className="label">{l}</p><p className={`num mt-2 text-2xl font-semibold ${(v as number) < 0 ? 'text-[var(--danger)]' : ''}`}>{money(v as number)}</p><p className="mt-1 truncate text-[11.5px] font-semibold text-[var(--muted)]">{s}</p></div>)}
   </div>;
 }
 
@@ -99,10 +99,10 @@ function FinanceView({ data }: { data: Finance }) {
     <Totals t={data.totals}/>
     <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
       <Card title="Cash flow" subtitle="Money in (stay payments + POS) against expenses, per day" bodyClass="h-72 p-4">
-        <ResponsiveContainer width="100%" height="100%"><BarChart data={data.series} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}><CartesianGrid vertical={false} stroke="#EDF2EB"/><XAxis dataKey="date" tick={tick} tickFormatter={d => fmtDay(d)} minTickGap={24} axisLine={false} tickLine={false}/><YAxis tick={tick} tickFormatter={axisMoney} width={50} axisLine={false} tickLine={false}/><Tooltip labelFormatter={d => fmtDay(String(d))} formatter={v => money(Number(v))}/><Legend wrapperStyle={{ fontSize: 11, fontWeight: 600 }}/><Bar dataKey="income" name="Money in" fill="#0070C0" radius={[3, 3, 0, 0]}/><Bar dataKey="expenses" name="Expenses" fill="#005A1C" radius={[3, 3, 0, 0]}/></BarChart></ResponsiveContainer>
+        <ResponsiveContainer width="100%" height="100%"><BarChart data={data.series} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}><CartesianGrid vertical={false} stroke="#F3F0EA"/><XAxis dataKey="date" tick={tick} tickFormatter={d => fmtDay(d)} minTickGap={24} axisLine={false} tickLine={false}/><YAxis tick={tick} tickFormatter={axisMoney} width={50} axisLine={false} tickLine={false}/><Tooltip labelFormatter={d => fmtDay(String(d))} formatter={v => money(Number(v))}/><Legend wrapperStyle={{ fontSize: 11, fontWeight: 600 }}/><Bar dataKey="income" name="Money in" fill="#0039D5" radius={[3, 3, 0, 0]}/><Bar dataKey="expenses" name="Expenses" fill="#0A2266" radius={[3, 3, 0, 0]}/></BarChart></ResponsiveContainer>
       </Card>
       <Card title="By payment method" bodyClass="p-5">
-        {data.byMethod.length === 0 ? <p className="text-sm font-semibold text-[var(--muted)]">Nothing collected in this period.</p> : <ul className="grid gap-3">{data.byMethod.map(m => <li key={m.method}><div className="flex justify-between text-sm font-semibold"><span>{m.label}</span><span className="num">{money(m.total)}</span></div><div className="mt-1 h-1.5 rounded-full bg-[#EDF2EB]"><div className="h-full rounded-full bg-sea" style={{ width: `${100 * m.total / max}%` }}/></div></li>)}</ul>}
+        {data.byMethod.length === 0 ? <p className="text-sm font-semibold text-[var(--muted)]">Nothing collected in this period.</p> : <ul className="grid gap-3">{data.byMethod.map(m => <li key={m.method}><div className="flex justify-between text-sm font-semibold"><span>{m.label}</span><span className="num">{money(m.total)}</span></div><div className="mt-1 h-1.5 rounded-full bg-[#F3F0EA]"><div className="h-full rounded-full bg-sea" style={{ width: `${100 * m.total / max}%` }}/></div></li>)}</ul>}
       </Card>
     </div>
     <Card className="mt-5" title="Transactions" subtitle="Latest 60 in this period">

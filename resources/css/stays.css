@@ -1,6 +1,6 @@
 .stays-landing {
-  --sl-navy: var(--guest-primary, #005A1C);
-  --sl-pink: var(--guest-accent, #0070C0);
+  --sl-navy: var(--guest-primary, #0A2266);
+  --sl-pink: var(--guest-accent, #0039D5);
   --sl-cream: #f7f5f0;
   --sl-rule: #dededb;
   overflow-x: clip;
@@ -12,26 +12,26 @@
 .sl-hero { display: grid; grid-template-columns: minmax(0, .93fr) minmax(0, 1.07fr); min-height: 640px; background: var(--sl-navy); }
 .sl-hero-copy { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 70px clamp(42px, 6.8vw, 115px) 110px max(1rem, calc((100vw - 1200px) / 2)); color: #fff; }
 .sl-eyebrow { margin: 0; color: var(--sl-pink); font-size: 10px; font-weight: 850; letter-spacing: .21em; line-height: 1.6; text-transform: uppercase; }
-.sl-hero .sl-eyebrow { color: #ADD3EF; }
+.sl-hero .sl-eyebrow { color: #FFD84D; }
 .sl-eyebrow span { padding: 0 8px; color: #8590ad; }
 .sl-hero h1 { max-width: 700px; margin: 26px 0 22px; font: 700 clamp(55px, 5.4vw, 82px)/.99 var(--font-display); letter-spacing: -.035em; }
-.sl-hero h1 em { color: #ADD3EF; font-weight: 400; }
+.sl-hero h1 em { color: #FFD84D; font-weight: 400; }
 .sl-hero-description { max-width: 510px; margin: 0; color: #c4cbdf; font-size: 15px; line-height: 1.9; }
 .sl-hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 26px; margin-top: 35px; }
 .sl-button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 49px; padding: 12px 22px; border: 0; border-radius: var(--radius-control); font-size: 12px; font-weight: 800; white-space: nowrap; cursor: pointer; transition: background .18s ease, transform .18s ease; }
 .sl-button:hover { transform: translateY(-2px); }
 .sl-button-accent { background: var(--sl-pink); color: #fff; }
-.sl-button-accent:hover { background: #00408C; }
+.sl-button-accent:hover { background: #002EAD; }
 .sl-button-dark { background: var(--sl-navy); color: #fff; }
-.sl-button-dark:hover { background: #0F6A1C; }
+.sl-button-dark:hover { background: #0039D5; }
 .sl-text-link { display: inline-flex; align-items: center; gap: 9px; color: #e4e8f4; font-size: 12px; font-weight: 700; }
-.sl-text-link:hover { color: #ADD3EF; }
+.sl-text-link:hover { color: #FFD84D; }
 .sl-hero-index { display: flex; align-items: center; justify-content: space-between; gap: 15px; max-width: 470px; width: 100%; margin-top: auto; padding-top: 80px; color: #8e9aba; font-size: 9px; font-weight: 750; letter-spacing: .17em; }
 .sl-hero-visual { position: relative; min-height: 640px; overflow: hidden; background: #374459; }
 .sl-hero-visual::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg,transparent 50%,#083A1Bbb 100%); }
 .sl-hero-visual > img { width: 100%; height: 100%; position: absolute; inset: 0; object-fit: cover; object-position: center; }
 .sl-image-caption { position: absolute; right: 36px; bottom: 100px; z-index: 1; display: flex; flex-direction: column; min-width: 215px; padding: 16px 20px; border-left: 2px solid var(--sl-pink); border-radius: 0 14px 14px 0; background: #0B4F24b8; backdrop-filter: blur(8px); color: #fff; }
-.sl-image-caption span { color: #B9DAF7; font-size: 9px; font-weight: 850; letter-spacing: .18em; }
+.sl-image-caption span { color: #FFE27A; font-size: 9px; font-weight: 850; letter-spacing: .18em; }
 .sl-image-caption strong { margin-top: 5px; font: 700 19px var(--font-display); }
 .sl-image-caption small { margin-top: 4px; color: #c4cbdf; font-size: 10px; }
 .sl-search-wrap { position: relative; z-index: 2; width: min(100% - 2rem, 1200px); margin: -64px auto 0; padding: 27px 34px 33px; background: #fff; border: 1px solid #e3e4e4; border-radius: 24px; box-shadow: 0 25px 70px #0B4F241c; scroll-margin-top: 96px; }
@@ -84,7 +84,7 @@
 .sl-steps p { margin: 5px 0 0; color: #69738a; font-size: 12px; line-height: 1.65; }
 .sl-final { display: flex; flex-direction: column; align-items: center; padding: 90px 25px 100px; background: var(--sl-navy); color: #fff; text-align: center; }
 .sl-final h2 { margin: 16px 0 28px; font: 700 clamp(44px,5vw,70px)/1.05 var(--font-display); letter-spacing: -.03em; }
-.sl-final h2 em { color: #ADD3EF; font-weight: 400; }
+.sl-final h2 em { color: #FFD84D; font-weight: 400; }
 @media (max-width: 1100px) {
   .sl-hero { min-height: 570px; }
   .sl-hero-copy { padding-left: 40px; padding-right: 40px; }

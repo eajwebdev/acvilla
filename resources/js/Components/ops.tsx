@@ -28,10 +28,10 @@ export const SOURCES: Record<string, string> = { facebook: 'Facebook', messenger
 export const DIRECT_SOURCES = ['facebook', 'messenger', 'instagram', 'whatsapp', 'viber', 'website', 'phone', 'walk_in', 'direct'];
 export const SOURCE_GROUPS: [string, string[]][] = [['Social & chat', ['facebook', 'messenger', 'instagram', 'whatsapp', 'viber']], ['Direct', ['website', 'phone', 'walk_in', 'direct']], ['Booking sites', ['airbnb', 'booking_com', 'agoda', 'other']]];
 /** Brand colour per channel, used for the badge dot and the Insights bars. */
-export const SOURCE_COLORS: Record<string, string> = { facebook: '#1877F2', messenger: '#A334FA', instagram: '#E1306C', whatsapp: '#25D366', viber: '#7360F2', website: '#005A1C', phone: '#64736B', walk_in: '#0070C0', direct: '#9AA59E', airbnb: '#FF5A5F', booking_com: '#003580', agoda: '#5392F9', other: '#B3BDB6' };
+export const SOURCE_COLORS: Record<string, string> = { facebook: '#1877F2', messenger: '#A334FA', instagram: '#E1306C', whatsapp: '#25D366', viber: '#7360F2', website: '#0A2266', phone: '#5E6679', walk_in: '#0039D5', direct: '#939BAC', airbnb: '#FF5A5F', booking_com: '#003580', agoda: '#5392F9', other: '#AFB4C1' };
 export function SourceBadge({ source }: { source?: string | null }) {
   const key = source || 'direct';
-  return <span className="pill"><span className="size-1.5 rounded-full" style={{ background: SOURCE_COLORS[key] ?? '#B3BDB6' }}/>{SOURCES[key] ?? key}</span>;
+  return <span className="pill"><span className="size-1.5 rounded-full" style={{ background: SOURCE_COLORS[key] ?? '#AFB4C1' }}/>{SOURCES[key] ?? key}</span>;
 }
 
 const statusTone: Record<string, string> = {

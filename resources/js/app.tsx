@@ -21,5 +21,5 @@ createInertiaApp({
       return createElement(Component, { key, ...pageProps });
     }}</App>);
   },
-  progress: { color: '#0070C0', delay: 150, showSpinner: false },
+  progress: { color: '#0039D5', delay: 150, showSpinner: false },
 });

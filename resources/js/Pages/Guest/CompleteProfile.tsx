@@ -24,9 +24,9 @@ export default function CompleteProfile({ tenant, first_name, last_name, phone, 
     <div className="container max-w-lg py-10 sm:py-16">
       <form onSubmit={submit} className="ac-panel !p-6 sm:!p-8">
         {!first && <a href={back} className="-ml-2 mb-4 inline-grid size-10 place-items-center rounded-full text-slate hover:bg-slate-100" aria-label="Back"><ChevronLeft size={22}/></a>}
-        <h1 className="text-2xl font-semibold text-[#1F2A24]">{first ? 'First, tell us your name.' : 'Your details'}</h1>
+        <h1 className="text-2xl font-semibold text-[#141C33]">{first ? 'First, tell us your name.' : 'Your details'}</h1>
         <p className="mt-2 text-sm text-slate">{first ? 'We’re setting up your account. Add your name and a mobile number so the owner can call you to confirm your bookings.' : 'The owner calls this number to confirm your bookings.'}</p>
-        <p className="mt-4 flex items-center gap-3 rounded-2xl bg-[#F3F8F2] px-4 py-3 text-sm">
+        <p className="mt-4 flex items-center gap-3 rounded-2xl bg-[#EDF1FC] px-4 py-3 text-sm">
           {avatar ? <img src={avatar} alt="" className="size-9 rounded-full" referrerPolicy="no-referrer"/> : <span className="grid size-9 place-items-center rounded-full bg-[var(--ac-green)] font-semibold text-white">{email.charAt(0).toUpperCase()}</span>}
           <span className="min-w-0"><span className="block text-xs text-slate">Signed in with Google</span><strong className="block truncate">{email}</strong></span>
         </p>

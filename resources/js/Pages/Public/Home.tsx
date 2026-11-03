@@ -1,7 +1,6 @@
 ﻿import { Head, Link, router } from '@inertiajs/react';
-import { AirVent, BedDouble, CalendarCheck2, CalendarDays, Car, ChevronRight, Flower2, Navigation, Gem, HeartHandshake, Images, Mail, MapPin, MapPinned, Music, PartyPopper, Phone, ShowerHead, Sparkles, Sunrise, Users, Utensils, Waves, Wifi, type LucideIcon } from 'lucide-react';
+import { BedDouble, CalendarCheck2, CalendarDays, ChevronRight, Navigation, HeartHandshake, Images, Mail, MapPin, MapPinned, Phone, Sparkles, Users } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
-import { BrandMark } from '../../Components/Brand';
 import DateRangePicker, { type DateRange } from '../../Components/DateRangePicker';
 import GuestShell, { Facebook, type SiteTenant } from '../../Components/GuestShell';
 import ImageGallery from '../../Components/ImageGallery';
@@ -9,9 +8,11 @@ import { RoomDialog, roomPhotos } from '../../Components/RoomShowcase';
 import { Rich, SiteIcon, type IconItem, type SiteContent } from '../../Components/siteContent';
 import { includedGuests, money, rateUnit, time12, type Property, type Room } from '../../types';
 
-const AMENITY_ICONS: [RegExp, LucideIcon][] = [[/pool|swim/i, Waves], [/air|aircon/i, AirVent], [/wi-?fi/i, Wifi], [/shower|bath/i, ShowerHead], [/park/i, Car],
-  [/hall|function|event/i, PartyPopper], [/videoke|karaoke|tv/i, Music], [/kitchen|breakfast|food|coffee/i, Utensils], [/garden/i, Flower2], [/lounge|balcony|view/i, Sunrise], [/towel|linen|bed/i, BedDouble]];
-const amenityIcon = (name: string) => AMENITY_ICONS.find(([pattern]) => pattern.test(name))?.[1] ?? Sparkles;
+const AMENITY_ICONS: [RegExp, string][] = [[/cabana/i, 'cabana'], [/pool|swim/i, 'pool'], [/\bair/i, 'aircon'], [/wi-?fi/i, 'wifi'], [/shower/i, 'shower'], [/bath|toilet/i, 'bathroom'], [/\btv\b|television/i, 'tv'], [/park/i, 'parking'],
+  [/hall|function|event/i, 'hall'], [/sound|speaker/i, 'sound'], [/videoke|karaoke|mic/i, 'videoke'], [/towel|linen/i, 'towels'], [/garden/i, 'garden'], [/chair|table/i, 'chairs']];
+const amenityIcon = (name: string) => AMENITY_ICONS.find(([pattern]) => pattern.test(name))?.[1];
+/** "Sound system with microphone" → "Sound System with Microphone". */
+const amenityLabel = (name: string) => name.replace(/[A-Za-z][\w-]*/g, word => /^(with|and|of|the)$/i.test(word) ? word : word.charAt(0).toUpperCase() + word.slice(1));
 
 /** "Your Private Escape in Mabinay" → navy first line, gold italic "in Mabinay". */
 function splitHeadline(text: string): [string, string] {
@@ -51,10 +52,9 @@ export default function Home({ tenant, featured, hero, requestTypes = {} }: { te
   return <GuestShell tenant={tenant}>
     <Head title={`${name} | ${c.hero_eyebrow || 'Private resort'}`}>
       <meta name="description" content={tenant?.hero_description || c.footer_about}/>
-      <meta property="og:title" content={`${name} | ${tenant?.hero_headline || 'Your private escape'}`}/>
-      <meta property="og:description" content={tenant?.hero_description || c.footer_tagline}/>
-      <meta property="og:image" content={heroImage}/>
     </Head>
+
+    <div className="ac-home">
 
     <section className="ac-hero" aria-labelledby="ac-hero-title">
       <div className="ac-hero-image"><img src={heroImage} alt={name} fetchPriority="high"/></div>
@@ -109,25 +109,28 @@ export default function Home({ tenant, featured, hero, requestTypes = {} }: { te
       <div className="container">
         <div className="ac-events-grid">
           <div>
-            {c.events_eyebrow && <p className="ac-eyebrow">{c.events_eyebrow}</p>}
-            <h2 id="ac-events-title" className="ac-title mt-4"><Rich text={c.events_title}/></h2>
+            <ArtHeading id="ac-events-title" src="/images/acvilla/ui/title-events.png"><Rich text={c.events_title}/></ArtHeading>
             <div className="ac-divider mt-5 justify-start"><HeartHandshake size={30} strokeWidth={1.4}/></div>
             {c.events_text && <p className="mt-5 max-w-lg text-lg italic leading-8 text-white/80">{c.events_text}</p>}
-            <div className="mt-8 flex flex-wrap gap-3">{c.events_primary_label && <Link href={reserveHref('wedding', wholeResort)} className="ac-btn ac-btn-primary">{c.events_primary_label} <ChevronRight size={20}/></Link>}{c.events_secondary_label && <a href="#wedding-package" className="ac-btn ac-btn-light">{c.events_secondary_label} <ChevronRight size={20}/></a>}</div>
+            <div className="ac-art-actions mt-8 flex flex-wrap gap-3">
+              {c.events_primary_label && <Link href={reserveHref('wedding', wholeResort)} className="ac-art-button"><img src="/images/acvilla/ui/button-inquire-events.png" alt={c.events_primary_label}/></Link>}
+              {c.events_secondary_label && <a href="#wedding-package" className="ac-art-button"><img src="/images/acvilla/ui/button-wedding-package.png" alt={c.events_secondary_label}/></a>}
+            </div>
           </div>
-          <div id="wedding-package" className="ac-package">
-            <BrandMark className="mx-auto h-14"/>
-            {c.package_kicker && <p className="ac-package-kicker mt-3">{c.package_kicker}</p>}
-            <h3 className="ac-accent-text not-italic uppercase">{c.package_title}</h3>
-            {c.package_subtitle && <p className="ac-package-sub">{c.package_subtitle}</p>}
-            <div className="ac-divider mt-3"><Gem size={20} strokeWidth={1.5}/></div>
-            {c.package_heading && <p className="ac-package-rent">{c.package_heading}</p>}
-            {c.package_note && <p className="ac-package-note">{c.package_note}</p>}
-            {wholeResort && <p className="mt-4 font-serif text-2xl font-semibold text-navy">{money(wholeResort.base_rate)} <span className="text-sm font-semibold text-slate">total package</span></p>}
-            {c.package_includes && <p className="mt-2 text-sm text-slate">{c.package_includes}</p>}
-            <div className="mt-6 flex flex-wrap justify-center gap-3">
-              {c.package_button && <Link href={reserveHref('whole_resort', wholeResort)} className="ac-btn ac-btn-primary">{c.package_button} <ChevronRight size={20}/></Link>}
-              {wholeResortItem && roomPhotos(wholeResortItem.room).length > 0 && <button type="button" onClick={() => setViewing(wholeResortItem)} className="ac-btn ac-btn-outline"><Images size={18}/> View photos</button>}
+          <div id="wedding-package" className="ac-package ac-package-art">
+            <div className="sr-only">
+              {c.package_kicker && <p>{c.package_kicker}</p>}
+              <h3>{c.package_title}</h3>
+              {c.package_subtitle && <p>{c.package_subtitle}</p>}
+              {c.package_heading && <p>{c.package_heading}</p>}
+              {c.package_note && <p>{c.package_note}</p>}
+              {wholeResort && <p>{money(wholeResort.base_rate)} total package</p>}
+            </div>
+            <img className="ac-package-artwork" src="/images/acvilla/ui/wedding-package.png" alt="" aria-hidden="true"/>
+            {c.package_includes && <p className="ac-package-includes">{c.package_includes}</p>}
+            <div className="ac-art-actions flex flex-wrap justify-center gap-3">
+              {c.package_button && <Link href={reserveHref('whole_resort', wholeResort)} className="ac-art-button"><img src="/images/acvilla/ui/button-book-now.png" alt={c.package_button}/></Link>}
+              {wholeResortItem && roomPhotos(wholeResortItem.room).length > 0 && <button type="button" onClick={() => setViewing(wholeResortItem)} className="ac-art-button"><img src="/images/acvilla/ui/button-view-photos.png" alt="View photos"/></button>}
             </div>
           </div>
         </div>
@@ -140,15 +143,23 @@ export default function Home({ tenant, featured, hero, requestTypes = {} }: { te
 
     {on('amenities') && amenities.length > 0 && <section id="amenities" className="ac-section" aria-labelledby="ac-amenities-title">
       <div className="container">
-        <div className="mx-auto max-w-2xl text-center">{c.amenities_eyebrow && <p className="ac-eyebrow center justify-center">{c.amenities_eyebrow}</p>}<h2 id="ac-amenities-title" className="ac-title mt-4"><Rich text={c.amenities_title}/></h2>{c.amenities_text && <p className="ac-lead mt-4">{c.amenities_text}</p>}</div>
-        <ul className="ac-amenities">{amenities.map(item => { const Icon = amenityIcon(item); return <li key={item}><span><Icon size={18}/></span>{item}</li>; })}</ul>
-        {tenant?.settings && <p className="mt-6 text-center text-sm text-slate">Check-in from {time12(tenant.settings.check_in_time)} · Check-out by {time12(tenant.settings.check_out_time)}</p>}
+        <div className="ac-sign-head">
+          {c.amenities_eyebrow && <p className="ac-sign-eyebrow">{c.amenities_eyebrow}</p>}
+          <div className="ac-sign">
+            <img src="/images/acvilla/ui/flower-double.png" alt="" aria-hidden="true" className="ac-sign-flower"/>
+            <h2 id="ac-amenities-title" className="ac-sign-title"><Rich text={c.amenities_title}/></h2>
+            <img src="/images/acvilla/ui/wheel.png" alt="" aria-hidden="true" className="ac-sign-wheel"/>
+          </div>
+          {c.amenities_text && <p className="ac-sign-text">{c.amenities_text}</p>}
+        </div>
+        <ul className="ac-amenity-cards">{amenities.map(item => { const icon = amenityIcon(item); return <li key={item}>{icon ? <img src={`/images/acvilla/ui/amenities/${icon}.webp`} alt="" aria-hidden="true"/> : <Sparkles aria-hidden="true" size={44} className="text-[#0039D5]"/>}<span>{amenityLabel(item)}</span></li>; })}</ul>
+        {tenant?.settings && <div className="ac-stay-times"><p>Check-in from {time12(tenant.settings.check_in_time)}<i aria-hidden="true">•</i>Check-out by {time12(tenant.settings.check_out_time)}</p></div>}
       </div>
     </section>}
 
     {on('gallery') && c.gallery.length > 0 && <section id="gallery" className="ac-section ac-band" aria-labelledby="ac-gallery-title">
       <div className="container">
-        <div className="flex flex-wrap items-end justify-between gap-4"><div>{c.gallery_eyebrow && <p className="ac-eyebrow">{c.gallery_eyebrow}</p>}<h2 id="ac-gallery-title" className="ac-title mt-4"><Rich text={c.gallery_title}/></h2></div>{c.gallery_text && <p className="max-w-sm text-sm leading-6 text-slate">{c.gallery_text}</p>}</div>
+        <div className="flex flex-wrap items-end justify-between gap-4"><ArtHeading id="ac-gallery-title" src="/images/acvilla/ui/title-gallery.png"><Rich text={c.gallery_title}/></ArtHeading>{c.gallery_text && <p className="max-w-sm text-sm leading-6 text-slate">{c.gallery_text}</p>}</div>
         <ImageGallery className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-3" imageClassName="h-44 sm:h-60 rounded-2xl" items={c.gallery.map(item => ({ src: item.image, alt: item.caption || name, caption: item.caption || undefined }))}/>
       </div>
     </section>}
@@ -163,15 +174,14 @@ export default function Home({ tenant, featured, hero, requestTypes = {} }: { te
     {on('contact') && <section id="contact" className="ac-section ac-band" aria-labelledby="ac-contact-title">
       <div className="container ac-contact">
         <div className="ac-contact-card">
-          {c.contact_eyebrow && <p className="ac-eyebrow">{c.contact_eyebrow}</p>}
-          <h2 id="ac-contact-title" className="ac-title mt-4"><Rich text={c.contact_title}/></h2>
+          <ArtHeading id="ac-contact-title" src="/images/acvilla/ui/title-contact.png"><Rich text={c.contact_title}/></ArtHeading>
           <ul>
             {tenant?.business_address && <li><span><MapPin size={19}/></span><div><small>Address</small><p className="mt-1 font-semibold">{tenant.business_address}</p>{c.location_note && <p className="text-sm text-slate">{c.location_note}</p>}</div></li>}
             {(tenant?.business_phone || c.phone_alt) && <li><span><Phone size={19}/></span><div><small>Call or text</small>{[tenant?.business_phone, c.phone_alt].filter(Boolean).map(phone => <a key={phone} href={`tel:${phone!.replace(/\s/g, '')}`} className="mt-1 block font-semibold">{phone}</a>)}</div></li>}
             {c.facebook_url && <li><span><Facebook size={19}/></span><div><small>Facebook page</small><a href={c.facebook_url} target="_blank" rel="noreferrer" className="mt-1 block font-semibold">Message us on Facebook</a></div></li>}
             {tenant?.business_email && <li><span><Mail size={19}/></span><div><small>Email</small><a href={`mailto:${tenant.business_email}`} className="mt-1 block font-semibold">{tenant.business_email}</a></div></li>}
           </ul>
-          {c.map_url && <a href={c.map_url} target="_blank" rel="noreferrer" className="ac-btn ac-btn-outline mt-8">Open in Google Maps <ChevronRight size={20}/></a>}
+          {c.map_url && <a href={c.map_url} target="_blank" rel="noreferrer" className="ac-art-button mt-8"><img src="/images/acvilla/ui/button-open-maps.png" alt="Open in Google Maps"/></a>}
         </div>
         {c.contact_image && <div className="ac-contact-photo"><img src={c.contact_image} alt="" loading="lazy"/>{(c.contact_photo_title || c.contact_photo_text) && <div>{c.contact_photo_title && <p className="font-serif text-lg font-semibold">{c.contact_photo_title}</p>}{c.contact_photo_text && <p className="text-sm text-white/75">{c.contact_photo_text}</p>}</div>}</div>}
       </div>
@@ -191,12 +201,13 @@ export default function Home({ tenant, featured, hero, requestTypes = {} }: { te
     {on('final') && <section className="ac-final" aria-labelledby="ac-final-title">
       {c.final_image && <img src={c.final_image} alt="" loading="lazy"/>}
       <div className="container">
-        {c.final_eyebrow && <p className="ac-eyebrow center justify-center !text-[#ADD3EF]">{c.final_eyebrow}</p>}
-        <h2 id="ac-final-title"><Rich text={c.final_title}/></h2>
+        <ArtHeading id="ac-final-title" src="/images/acvilla/ui/title-final.png"><Rich text={c.final_title}/></ArtHeading>
         {c.final_text && <p className="mx-auto mt-4 max-w-md text-white/75">{c.final_text}</p>}
-        {c.final_button && <Link href={bookHref()} className="ac-btn ac-btn-primary mt-8">{c.final_button} <ChevronRight size={20}/></Link>}
+        {c.final_button && <Link href={bookHref()} className="ac-art-button mt-8"><img src="/images/acvilla/ui/button-reserve.png" alt={c.final_button}/></Link>}
       </div>
     </section>}
+
+    </div>
 
     <RoomDialog room={viewing?.room ?? null} fallbackPhoto={viewing?.property.cover_image} reserveHref={viewing ? roomHref(viewing.room, viewing.property) : undefined} open={!!viewing} onOpenChange={next => { if (!next) setViewing(null); }}/>
   </GuestShell>;
@@ -207,7 +218,11 @@ function Features({ items }: { items: IconItem[] }) {
 }
 
 function Swash() {
-  return <svg className="ac-swash" viewBox="0 0 320 16" fill="none" aria-hidden="true"><defs><linearGradient id="ac-swash" x1="0" x2="320" y1="0" y2="0" gradientUnits="userSpaceOnUse"><stop stopColor="#0F6A1C"/><stop offset=".5" stopColor="#448810"/><stop offset="1" stopColor="#0070C0"/></linearGradient></defs><path d="M2 13C80 4 200 1 318 7" stroke="url(#ac-swash)" strokeWidth="3" strokeLinecap="round"/><path d="M50 15c70-5 150-6 230-3" stroke="url(#ac-swash)" strokeWidth="1.2" strokeLinecap="round" opacity=".55"/></svg>;
+  return <svg className="ac-swash" viewBox="0 0 320 16" fill="none" aria-hidden="true"><defs><linearGradient id="ac-swash" x1="0" x2="320" y1="0" y2="0" gradientUnits="userSpaceOnUse"><stop stopColor="#FFC800"/><stop offset="1" stopColor="#FFD84D"/></linearGradient></defs><path d="M2 13C80 4 200 1 318 7" stroke="url(#ac-swash)" strokeWidth="3" strokeLinecap="round"/><path d="M50 15c70-5 150-6 230-3" stroke="url(#ac-swash)" strokeWidth="1.2" strokeLinecap="round" opacity=".55"/></svg>;
+}
+
+function ArtHeading({ id, src, children }: { id: string; src: string; children: React.ReactNode }) {
+  return <h2 id={id} className="ac-title-art"><span className="sr-only">{children}</span><img src={src} alt="" aria-hidden="true"/></h2>;
 }
 
 /** A room, hall or package: the photo and title open its photo browser; Reserve goes straight to the booking form. */

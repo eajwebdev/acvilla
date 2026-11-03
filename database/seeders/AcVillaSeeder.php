@@ -31,7 +31,7 @@ class AcVillaSeeder extends Seeder
                 'name' => 'AC Villa & Private Resort', 'business_name' => 'AC Villa & Private Resort',
                 'business_email' => env('ACVILLA_EMAIL'), 'business_phone' => env('ACVILLA_PHONE', '0927 493 1583'),
                 'business_address' => 'North Poblacion, Mabinay, Negros Oriental (beside NORSU)',
-                'primary_color' => '#005A1C', 'secondary_color' => '#0070C0',
+                'primary_color' => '#0A2266', 'secondary_color' => '#0039D5',
                 'hero_headline' => 'Your Private Escape in Mabinay',
                 'hero_description' => 'Relax, celebrate, and create unforgettable memories with your family, friends, and loved ones.',
                 'hero_image' => '/images/acvilla/hero-mabinay.jpg',

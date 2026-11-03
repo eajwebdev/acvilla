@@ -18,11 +18,11 @@ type Props = { tenant: { business_name: string }; today: string; day: Day; prope
 function Spark({ values }: { values: number[] }) {
   const max = Math.max(...values, 1);
   const pts = values.map((v, i) => `${(i / Math.max(values.length - 1, 1)) * 60},${18 - (v / max) * 16}`).join(' ');
-  return <svg viewBox="0 0 60 20" className="h-5 w-16" aria-hidden="true"><polyline points={pts} fill="none" stroke="#0070C0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+  return <svg viewBox="0 0 60 20" className="h-5 w-16" aria-hidden="true"><polyline points={pts} fill="none" stroke="#0039D5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 }
 function Ring({ percent }: { percent: number }) {
   const r = 14, c = 2 * Math.PI * r;
-  return <svg viewBox="0 0 36 36" className="size-9 -rotate-90" aria-hidden="true"><circle cx="18" cy="18" r={r} fill="none" stroke="#E3EAE1" strokeWidth="4"/>{percent > 0 && <circle cx="18" cy="18" r={r} fill="none" stroke="#0070C0" strokeWidth="4" strokeDasharray={`${(percent / 100) * c} ${c}`} strokeLinecap="round"/>}</svg>;
+  return <svg viewBox="0 0 36 36" className="size-9 -rotate-90" aria-hidden="true"><circle cx="18" cy="18" r={r} fill="none" stroke="#EBE8E0" strokeWidth="4"/>{percent > 0 && <circle cx="18" cy="18" r={r} fill="none" stroke="#0039D5" strokeWidth="4" strokeDasharray={`${(percent / 100) * c} ${c}`} strokeLinecap="round"/>}</svg>;
 }
 
 export default function Dashboard({ today, day, properties, units, trend, months, target, attention, cleaning, cleaningLimited }: Props) {
@@ -77,7 +77,7 @@ export default function Dashboard({ today, day, properties, units, trend, months
         <button type="button" aria-label={isRange ? 'Previous period' : 'Previous day'} onClick={() => shift(-1)} className="grid size-9 place-items-center text-[var(--muted)] transition-colors hover:text-[var(--ink)]"><ChevronLeft size={16}/></button>
         <DateRangePicker mode="report" label="Dashboard dates" presets={['today', 'tomorrow', 'next7', 'next30', 'week', 'month', 'lastMonth', 'year']}
           value={{ start: day.date, end: day.to }} onChange={range => range.start && range.end ? go(range.start, range.end) : go(today)}
-          trigger={<button type="button" aria-label={`Dashboard dates: ${rangeLabel}. Change`} className="flex h-9 items-center gap-1.5 whitespace-nowrap rounded-lg px-2 text-sm font-bold transition-colors hover:bg-[#F4F7F3]"><CalendarDays size={15} className="text-[var(--muted)]"/>{rangeLabel}<ChevronDown size={14} className="text-[var(--muted)]"/></button>}/>
+          trigger={<button type="button" aria-label={`Dashboard dates: ${rangeLabel}. Change`} className="flex h-9 items-center gap-1.5 whitespace-nowrap rounded-lg px-2 text-sm font-bold transition-colors hover:bg-[#F7F6F3]"><CalendarDays size={15} className="text-[var(--muted)]"/>{rangeLabel}<ChevronDown size={14} className="text-[var(--muted)]"/></button>}/>
         <button type="button" aria-label={isRange ? 'Next period' : 'Next day'} onClick={() => shift(1)} className="grid size-9 place-items-center text-[var(--muted)] transition-colors hover:text-[var(--ink)]"><ChevronRight size={16}/></button>
       </div>
       {!isToday && <button type="button" onClick={() => go(today)} className="btn btn-light">Today</button>}
@@ -86,7 +86,7 @@ export default function Dashboard({ today, day, properties, units, trend, months
     </>}>
     <Head title="Today"/>
     <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--line)] sm:grid-cols-3 xl:grid-cols-5">
-      {kpis.map(({ icon: Icon, label, value, sub, extra }) => <div key={label} className="flex min-w-0 items-start justify-between gap-2 bg-[#FAFBF8] p-4">
+      {kpis.map(({ icon: Icon, label, value, sub, extra }) => <div key={label} className="flex min-w-0 items-start justify-between gap-2 bg-[#FBFAF6] p-4">
         <div className="min-w-0"><p className="label flex items-center gap-1.5"><Icon size={13}/>{label}</p><p className="num mt-2 text-[26px] font-semibold leading-none">{value}</p><p className="mt-2 truncate text-[11.5px] font-semibold text-[var(--muted)]">{sub}</p></div>
         {extra}
       </div>)}
@@ -103,13 +103,13 @@ export default function Dashboard({ today, day, properties, units, trend, months
         <div className="h-60 px-2 pt-4">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data} margin={{ top: 6, right: 16, left: 4, bottom: 0 }}>
-              <CartesianGrid vertical={false} stroke="#EDF2EB"/>
-              <XAxis dataKey="label" tick={{ fontSize: 10, fontFamily: 'Jost', fill: '#64736B' }} axisLine={false} tickLine={false}/>
-              <YAxis ticks={yTicks} domain={[0, yTicks[2]]} tickFormatter={axisMoney} tick={{ fontSize: 10, fontFamily: 'Jost', fill: '#64736B' }} axisLine={false} tickLine={false} width={46}/>
+              <CartesianGrid vertical={false} stroke="#F3F0EA"/>
+              <XAxis dataKey="label" tick={{ fontSize: 10, fontFamily: 'Jost', fill: '#5E6679' }} axisLine={false} tickLine={false}/>
+              <YAxis ticks={yTicks} domain={[0, yTicks[2]]} tickFormatter={axisMoney} tick={{ fontSize: 10, fontFamily: 'Jost', fill: '#5E6679' }} axisLine={false} tickLine={false} width={46}/>
               <Tooltip formatter={v => money(Number(v))} labelFormatter={(l, p) => (p?.[0]?.payload as { month?: string })?.month ?? String(l)}/>
               {target > 0 && <ReferenceLine y={target} stroke="#A07716" strokeDasharray="5 4"/>}
-              <Line type="monotone" dataKey="solid" name="Booked" stroke="#0070C0" strokeWidth={2} dot={false} connectNulls={false} isAnimationActive={false}/>
-              <Line type="monotone" dataKey="dashed" name="Booked" stroke="#0070C0" strokeWidth={2} strokeDasharray="4 4" dot={(p: { cx?: number; cy?: number; index?: number }) => p.index === data.length - 1 ? <circle key="last" cx={p.cx} cy={p.cy} r={4} fill="#fff" stroke="#0070C0" strokeWidth={2}/> : <g key={p.index}/>} isAnimationActive={false}/>
+              <Line type="monotone" dataKey="solid" name="Booked" stroke="#0039D5" strokeWidth={2} dot={false} connectNulls={false} isAnimationActive={false}/>
+              <Line type="monotone" dataKey="dashed" name="Booked" stroke="#0039D5" strokeWidth={2} strokeDasharray="4 4" dot={(p: { cx?: number; cy?: number; index?: number }) => p.index === data.length - 1 ? <circle key="last" cx={p.cx} cy={p.cy} r={4} fill="#fff" stroke="#0039D5" strokeWidth={2}/> : <g key={p.index}/>} isAnimationActive={false}/>
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -119,7 +119,7 @@ export default function Dashboard({ today, day, properties, units, trend, months
         </div>
       </Card>
 
-      <Card title="Attention required" action={visibleAttention.length > 0 ? <button type="button" onClick={() => dismiss(visibleAttention.map(a => a.key))} className="text-xs font-bold text-[var(--muted)] hover:text-[var(--ink)]">Dismiss all</button> : <span className="text-xs font-bold text-[#B3BDB6]">Dismiss all</span>} bodyClass="max-h-[420px] overflow-y-auto">
+      <Card title="Attention required" action={visibleAttention.length > 0 ? <button type="button" onClick={() => dismiss(visibleAttention.map(a => a.key))} className="text-xs font-bold text-[var(--muted)] hover:text-[var(--ink)]">Dismiss all</button> : <span className="text-xs font-bold text-[#AFB4C1]">Dismiss all</span>} bodyClass="max-h-[420px] overflow-y-auto">
         {visibleAttention.length === 0 ? <div className="py-14"><Empty icon={<Check size={18}/>} title="Nothing needs you right now" body="Every room is assigned, on track and paid up for today."/></div>
           : <ul>{visibleAttention.map(a => {
             const tone = a.tone === 'danger' ? 'text-[var(--danger)] bg-rose-50' : a.tone === 'warn' ? 'text-amber-700 bg-amber-50' : 'text-sky-700 bg-sky-50';
@@ -140,7 +140,7 @@ export default function Dashboard({ today, day, properties, units, trend, months
           : <ul className="mt-3">{list.map(row => {
             const canIn = tab === 'arrivals' && row.status === 'CONFIRMED';
             const canOut = tab === 'departures' && row.status === 'CHECKED_IN';
-            return <li key={row.id} className="flex items-center gap-3 border-t border-[var(--line)] px-5 py-3 hover:bg-[#F8FAF7]">
+            return <li key={row.id} className="flex items-center gap-3 border-t border-[var(--line)] px-5 py-3 hover:bg-[#FAF9F7]">
               <span className="num w-16 shrink-0 text-xs font-semibold text-[var(--muted)]">{isRange && <span className="block text-[var(--ink)]">{short(tab === 'arrivals' ? row.check_in : row.check_out)}</span>}{fmtTime(row.time)}</span>
               <button type="button" onClick={() => setDrawer(row.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
                 <Avatar name={row.guest_name} size={32}/>

@@ -47,8 +47,8 @@ export default function GuestShell({ tenant, children }: GuestShellProps) {
   const query = tenant ? `?tenant=${encodeURIComponent(tenant.slug)}` : '';
   const home = `/${query}`;
   const book = `/book${query}`;
-  const primary = tenant?.primary_color || '#005A1C';
-  const accent = tenant?.secondary_color || '#0070C0';
+  const primary = tenant?.primary_color || '#0A2266';
+  const accent = tenant?.secondary_color || '#0039D5';
   const name = tenant?.business_name || 'AC Villa & Private Resort';
   const path = typeof window !== 'undefined' ? window.location.pathname : '/';
   const onHome = path === '/';
@@ -85,7 +85,7 @@ export default function GuestShell({ tenant, children }: GuestShellProps) {
   return <div className="guest-site ac-site flex min-h-screen flex-col" style={{ '--guest-primary': primary, '--guest-accent': accent } as React.CSSProperties}>
     <FlashToast/>
     <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:font-semibold">Skip to content</a>
-    <header className={`ac-header ${scrolled ? 'is-scrolled' : ''}`}>
+    <header className={`ac-header ${onHome ? 'ac-header-home' : ''} ${scrolled ? 'is-scrolled' : ''}`}>
       <div className="ac-topbar" aria-label="Contact">
         <div className="container flex h-full items-center justify-between gap-6">
           <p className="inline-flex min-w-0 items-center gap-2 truncate"><MapPin size={14} className="shrink-0"/>{tenant?.business_address || 'North Poblacion, Mabinay, Negros Oriental'}</p>
@@ -95,9 +95,9 @@ export default function GuestShell({ tenant, children }: GuestShellProps) {
           </div>
         </div>
       </div>
-      <div className="ac-mainbar">
+      <div className={`ac-mainbar ${onHome ? 'ac-mainbar-home' : ''}`}>
         <div className="container flex h-full items-center gap-4">
-          <div className="min-w-0 shrink">{tenant?.logo ? <Link href={home} aria-label={`${name} home`}><img src={tenant.logo} alt={name} className="max-h-12 w-auto max-w-[220px] object-contain"/></Link> : <Brand href={home} compact/>}</div>
+          <div className="min-w-0 shrink">{tenant?.logo ? <Link href={home} aria-label={`${name} home`}><img src={tenant.logo} alt={name} className="max-h-12 w-auto max-w-[220px] object-contain"/></Link> : <Brand href={home} compact={!onHome} plank={onHome}/>}</div>
           <nav aria-label="Main" className="ac-nav">
             <Link href={home} aria-current={onHome && !active ? 'page' : undefined}>Home</Link>
             {sections.map(([id, label]) => <a key={id} href={`${home}#${id}`} aria-current={current(id)}>{label}</a>)}
@@ -138,10 +138,10 @@ export default function GuestShell({ tenant, children }: GuestShellProps) {
           {account && <Link href={account.href} onClick={close}>{account.label}</Link>}
           {auth.user && <button type="button" onClick={() => router.post('/logout')}>Sign out</button>}
         </nav>
-        <div className="mt-auto grid gap-3 border-t border-[#E3EAE1] px-4 py-5">
+        <div className="mt-auto grid gap-3 border-t border-[#EBE8E0] px-4 py-5">
           {!auth.user && (googleLogin ? <GoogleButton returnTo={here} label="Sign in with Google" className="w-full"/>
             : <a href={signIn} className="ac-btn ac-btn-outline w-full justify-center"><UserRound size={18}/> Sign in or create account</a>)}
-          {auth.user && <p className="text-center text-sm text-slate">Signed in as <strong className="text-[#1F2A24]">{auth.user.name}</strong></p>}
+          {auth.user && <p className="text-center text-sm text-slate">Signed in as <strong className="text-[#141C33]">{auth.user.name}</strong></p>}
           <Link href={book} onClick={close} className="ac-btn ac-btn-primary w-full justify-center"><CalendarDays size={19}/> Book Now</Link>
           <div className="grid grid-cols-2 gap-3">
             {phones[0] && <a href={tel(phones[0])} className="ac-btn ac-btn-outline justify-center !px-3 text-sm"><Phone size={17}/> Call us</a>}
@@ -156,8 +156,8 @@ export default function GuestShell({ tenant, children }: GuestShellProps) {
     <footer className="guest-footer">
       <div className="container grid gap-10 py-16 md:grid-cols-[1.4fr_1fr_1.2fr]">
         <div>
-          <Brand href={home} tone="light"/>
-          {content?.footer_tagline && <p className="ac-display mt-6 max-w-sm text-lg italic text-[#ADD3EF]">{content.footer_tagline}</p>}
+          {onHome ? <Link href={home} aria-label={`${name} home`}><img src="/images/acvilla/ui/logo-plaque.png" alt={name} className="ac-footer-plaque"/></Link> : <Brand href={home}/>}
+          {content?.footer_tagline && <p className="ac-display mt-6 max-w-sm text-lg italic text-[#FFD84D]">{content.footer_tagline}</p>}
           {content?.footer_about && <p className="mt-3 max-w-sm text-sm leading-7 text-white/65">{content.footer_about}</p>}
         </div>
         <div><h3 className="font-serif text-lg font-semibold">Explore</h3><div className="mt-4 grid gap-3 text-sm text-white/70">
@@ -167,10 +167,10 @@ export default function GuestShell({ tenant, children }: GuestShellProps) {
             : auth.user ? <Link href={dashboardHref(auth.user.role)} className="hover:text-white">Dashboard</Link> : <Link href="/login" className="hover:text-white">Owner &amp; staff sign in</Link>}
         </div></div>
         <div><h3 className="font-serif text-lg font-semibold">Visit &amp; contact</h3><div className="mt-4 grid gap-3 text-sm text-white/70">
-          <p className="inline-flex items-start gap-2"><MapPin size={15} className="mt-0.5 shrink-0 text-[#ADD3EF]"/>{tenant?.business_address || 'North Poblacion, Mabinay, Negros Oriental'}</p>
-          {phones.map(phone => <a key={phone} href={tel(phone)} className="inline-flex items-center gap-2 hover:text-white"><Phone size={15} className="text-[#ADD3EF]"/>{phone}</a>)}
-          {facebook && <a href={facebook} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 hover:text-white"><Facebook size={15} className="text-[#ADD3EF]"/>AC Villa Private Resort on Facebook</a>}
-          {tenant?.business_email && <a href={`mailto:${tenant.business_email}`} className="inline-flex items-center gap-2 hover:text-white"><Mail size={15} className="text-[#ADD3EF]"/>{tenant.business_email}</a>}
+          <p className="inline-flex items-start gap-2"><MapPin size={15} className="mt-0.5 shrink-0 text-[#FFD84D]"/>{tenant?.business_address || 'North Poblacion, Mabinay, Negros Oriental'}</p>
+          {phones.map(phone => <a key={phone} href={tel(phone)} className="inline-flex items-center gap-2 hover:text-white"><Phone size={15} className="text-[#FFD84D]"/>{phone}</a>)}
+          {facebook && <a href={facebook} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 hover:text-white"><Facebook size={15} className="text-[#FFD84D]"/>AC Villa Private Resort on Facebook</a>}
+          {tenant?.business_email && <a href={`mailto:${tenant.business_email}`} className="inline-flex items-center gap-2 hover:text-white"><Mail size={15} className="text-[#FFD84D]"/>{tenant.business_email}</a>}
         </div></div>
       </div>
       <div className="border-t border-white/10"><div className="container flex flex-wrap items-center justify-between gap-3 py-5 text-xs text-white/50"><span>© {new Date().getFullYear()} {name}</span><span>Website by <Link href="/platform" className="font-semibold text-white/70 underline-offset-2 hover:underline">EAJ Web Development</Link></span></div></div>

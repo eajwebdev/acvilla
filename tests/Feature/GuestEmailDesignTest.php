@@ -12,7 +12,7 @@ class GuestEmailDesignTest extends TestCase
 {
     private function mail(string $body): GuestMessage
     {
-        $tenant = new Tenant(['business_name' => 'AC Villa & Private Resort', 'primary_color' => '#005A1C']);
+        $tenant = new Tenant(['business_name' => 'AC Villa & Private Resort', 'primary_color' => '#0A2266']);
 
         return new GuestMessage($tenant, 'Your stay is confirmed', $body);
     }

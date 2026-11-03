@@ -47,8 +47,8 @@ function AddToCalendar({ links }: { links: CalendarLinks }) {
 }
 
 const HEAD: Record<Stage, { icon: typeof PhoneCall; kicker: string; title: string; tone: string }> = {
-  requested: { icon: PhoneCall, kicker: 'Reservation request sent', title: 'Thank you! We’ll call you soon.', tone: 'text-[#ADD3EF]' },
-  due: { icon: QrCode, kicker: 'Your dates are approved', title: 'Pay your downpayment to confirm', tone: 'text-[#ADD3EF]' },
+  requested: { icon: PhoneCall, kicker: 'Reservation request sent', title: 'Thank you! We’ll call you soon.', tone: 'text-[#FFD84D]' },
+  due: { icon: QrCode, kicker: 'Your dates are approved', title: 'Pay your downpayment to confirm', tone: 'text-[#FFD84D]' },
   rejected: { icon: CircleX, kicker: 'Receipt not accepted', title: 'Please send a clearer receipt', tone: 'text-amber-200' },
   reviewing: { icon: Clock3, kicker: 'Receipt received', title: 'We’re checking your payment', tone: 'text-amber-200' },
   confirmed: { icon: CircleCheck, kicker: 'Booking confirmed', title: 'See you at AC Villa!', tone: 'text-emerald-300' },
@@ -176,12 +176,12 @@ function DownpaymentForm({ reference, downpayment }: { reference: string; downpa
         {option?.qr_image && <a href={option.qr_image} download className="text-xs font-semibold text-[var(--ac-blue)] underline">Save QR to phone</a>}
       </div>
       <div className="grid content-start gap-2 text-sm">
-        <p className="text-base font-semibold text-[#1F2A24]">{option?.label ?? 'Payment'}</p>
+        <p className="text-base font-semibold text-[#141C33]">{option?.label ?? 'Payment'}</p>
         {option?.account_name && <p className="ac-payee"><span>{option.qr_image ? 'Name shown when you scan' : 'Account name'}</span><strong>{option.account_name}</strong>{option.qr_image && <small>Check that this name appears before you send.</small>}</p>}
         {option?.account_number && <p><span className="text-slate">Number: </span><strong className="font-mono text-base">{option.account_number}</strong></p>}
         <ol className="mt-1 grid list-decimal gap-1 pl-5 text-slate">
           <li>{method === 'gcash' ? 'Open GCash, Maya or your bank app' : `Open ${option?.label ?? 'your app'}`} and {option?.qr_image ? 'scan the QR (or save it and upload it in the app)' : 'send to the account above'}.</li>
-          <li>Send exactly <strong className="text-[#1F2A24]">{money(downpayment.amount)}</strong>.</li>
+          <li>Send exactly <strong className="text-[#141C33]">{money(downpayment.amount)}</strong>.</li>
           <li>Take a screenshot or photo of the receipt and attach it below.</li>
         </ol>
         {option?.instructions && <p className="whitespace-pre-line text-xs text-slate">{option.instructions}</p>}
@@ -191,7 +191,7 @@ function DownpaymentForm({ reference, downpayment }: { reference: string; downpa
     <label className="field">Reference number <span className="font-normal text-slate">(optional, from your receipt)</span><input maxLength={100} value={payerRef} onChange={e => setPayerRef(e.target.value)} placeholder="e.g. 1012 345 678901"/></label>
 
     <div className={`ac-proof ${file ? 'has' : ''}`}>
-      <p className="font-semibold text-[#1F2A24]">Proof of payment</p>
+      <p className="font-semibold text-[#141C33]">Proof of payment</p>
       {preview ? <div className="relative"><img src={preview} alt="Your receipt"/><button type="button" className="absolute right-2 top-2 grid size-9 place-items-center rounded-full bg-white/95 shadow" aria-label="Remove photo" onClick={() => { setFile(null); setPreview(''); }}><X size={17}/></button></div>
         : <div className="ac-proof-actions">
           <button type="button" className="ac-btn ac-btn-outline !min-h-12 !px-3 !text-sm" onClick={() => camera.current?.click()}><Camera size={18}/> Take a photo</button>

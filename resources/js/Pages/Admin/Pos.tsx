@@ -137,7 +137,7 @@ export default function Pos({ date, today, tab: initialTab, items, catalog, gues
           : <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4">{visible.map(item => {
             const taken = inCart(item.id);
             const left = item.track_stock ? item.stock - taken : null; const out = left !== null && left <= 0;
-            return <button key={item.id} type="button" disabled={out} onClick={() => add(item)} className={`card relative flex min-h-[104px] flex-col items-start justify-between p-3.5 text-left transition active:scale-[.98] ${taken ? '!border-sea ring-2 ring-sea/15' : ''} ${out && !taken ? 'cursor-not-allowed opacity-50' : 'hover:-translate-y-0.5 hover:border-sea hover:shadow-[0_8px_20px_rgba(0,90,28,.08)]'}`}>
+            return <button key={item.id} type="button" disabled={out} onClick={() => add(item)} className={`card relative flex min-h-[104px] flex-col items-start justify-between p-3.5 text-left transition active:scale-[.98] ${taken ? '!border-sea ring-2 ring-sea/15' : ''} ${out && !taken ? 'cursor-not-allowed opacity-50' : 'hover:-translate-y-0.5 hover:border-sea hover:shadow-[0_8px_20px_rgba(10,34,102,.08)]'}`}>
               {taken > 0 && <span className="num absolute -right-1.5 -top-1.5 grid size-6 place-items-center rounded-full bg-sea text-[11px] font-bold text-white shadow">{taken}</span>}
               <span className="min-w-0"><span className="block text-[11px] font-bold uppercase tracking-wider text-[var(--muted)]">{item.category}</span><span className="mt-0.5 block text-sm font-bold leading-snug">{item.name}</span></span>
               <span className="mt-2 flex w-full items-end justify-between gap-2"><span className="num text-base font-semibold text-forest">{money(item.price)}</span>{left !== null && <span className={`text-[10.5px] font-bold ${left <= 3 ? 'text-[var(--danger)]' : 'text-[var(--muted)]'}`}>{out ? 'Sold out' : `${left} left`}</span>}</span>
@@ -149,7 +149,7 @@ export default function Pos({ date, today, tab: initialTab, items, catalog, gues
     {tab === 'sales' && <SalesView date={date} today={today} sales={sales} summary={summary} admin={admin} onShow={setShown} onDate={goDate} onEod={() => setEod(true)}/>}
     {tab === 'items' && catalog && <PosCatalog key={itemsFilter} items={catalog} initialFilter={itemsFilter}/>}
 
-    {tab === 'register' && <div className={`fixed inset-x-0 z-30 border-t border-[var(--line)] bg-white/95 px-4 py-3 shadow-[0_-10px_30px_rgba(0,90,28,.08)] backdrop-blur lg:hidden ${admin ? 'bottom-0 pb-[calc(.75rem+env(safe-area-inset-bottom))]' : 'bottom-[calc(62px+env(safe-area-inset-bottom))]'}`}>
+    {tab === 'register' && <div className={`fixed inset-x-0 z-30 border-t border-[var(--line)] bg-white/95 px-4 py-3 shadow-[0_-10px_30px_rgba(10,34,102,.08)] backdrop-blur lg:hidden ${admin ? 'bottom-0 pb-[calc(.75rem+env(safe-area-inset-bottom))]' : 'bottom-[calc(62px+env(safe-area-inset-bottom))]'}`}>
       <button type="button" onClick={() => setSheet(true)} className="btn btn-pink w-full !min-h-[52px] justify-between !px-4">
         <span className="flex items-center gap-2"><span className="num grid min-w-6 place-items-center rounded-full bg-white/25 px-1.5 text-xs">{count}</span>{count ? 'Review sale' : 'Current sale'}</span>
         <span className="flex items-center gap-1.5"><span className="num">{money(total)}</span><ChevronUp size={18}/></span>
@@ -158,7 +158,7 @@ export default function Pos({ date, today, tab: initialTab, items, catalog, gues
     <Dialog.Root open={sheet} onOpenChange={setSheet}>
       <Dialog.Portal><Dialog.Overlay className="tapp-overlay animate-fade lg:hidden"/><Dialog.Content className="tapp-dialog animate-fade lg:hidden" aria-describedby={undefined}>
         <Dialog.Title className="sr-only">Current sale</Dialog.Title>
-        <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-[#D5E2D3]"/>
+        <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-[#E3DED2]"/>
         {cartPanel}
       </Dialog.Content></Dialog.Portal>
     </Dialog.Root>
@@ -216,7 +216,7 @@ function CartPanel({ cart, customer, setCustomer, walkInName, setWalkInName, gue
     </div>
     <div className="grid gap-1.5 border-b border-[var(--line)] px-4 py-3 text-sm">
       <div className="flex justify-between"><span className="text-[var(--muted)]">Subtotal</span><span className="num font-semibold">{exactMoney(subtotal)}</span></div>
-      <div className="flex items-center justify-between gap-3"><label htmlFor="pos-discount" className="text-[var(--muted)]">Discount</label><input id="pos-discount" type="number" inputMode="decimal" min="0" step="0.01" value={discount} onChange={e => setDiscount(e.target.value)} placeholder="0.00" className="num w-28 rounded-lg border border-[var(--line)] bg-[#F4F7F3] px-2 py-1 text-right text-sm"/></div>
+      <div className="flex items-center justify-between gap-3"><label htmlFor="pos-discount" className="text-[var(--muted)]">Discount</label><input id="pos-discount" type="number" inputMode="decimal" min="0" step="0.01" value={discount} onChange={e => setDiscount(e.target.value)} placeholder="0.00" className="num w-28 rounded-lg border border-[var(--line)] bg-[#F7F6F3] px-2 py-1 text-right text-sm"/></div>
       <div className="mt-1 flex items-baseline justify-between"><span className="font-bold">Total</span><span className="num text-2xl font-semibold text-forest">{exactMoney(total)}</span></div>
     </div>
     <div className="p-4">
@@ -224,7 +224,7 @@ function CartPanel({ cart, customer, setCustomer, walkInName, setWalkInName, gue
       <div className="grid grid-cols-3 gap-1.5">{Object.entries(methods).map(([key, label]) => { const Icon = methodIcon[key] ?? Wallet; const off = key === 'room_charge' && guest?.status !== 'CHECKED_IN'; return <button key={key} type="button" disabled={off} title={off ? 'Choose a checked-in guest first' : undefined} onClick={() => setMethod(key)} aria-pressed={method === key} className={`flex flex-col items-center gap-1 rounded-xl border px-1 py-2 text-[11px] font-bold ${method === key ? 'border-forest bg-forest text-white' : 'border-[var(--line)] bg-white'} ${off ? 'cursor-not-allowed opacity-40' : ''}`}><Icon size={16}/>{label}</button>; })}</div>
       {method === 'cash' && <div className="mt-3"><label className="field">Cash received<input type="number" inputMode="decimal" min="0" step="0.01" value={tendered} onChange={e => setTendered(e.target.value)} placeholder={total.toFixed(2)} className="num"/></label>
         <div className="mt-1.5 flex flex-wrap gap-1">{[total, 100, 200, 500, 1000].filter((v, i) => i === 0 || v >= total).map((v, i) => <button key={i} type="button" onClick={() => setTendered(i === 0 ? '' : v.toFixed(2))} aria-pressed={i === 0 ? tendered === '' : Number(tendered) === v} className="chip !px-2.5 !py-1">{i === 0 ? 'Exact' : money(v)}</button>)}</div>
-        <div className="mt-2 flex justify-between rounded-lg bg-[#F4F7F3] px-3 py-2 text-sm font-bold"><span>Change</span><span className="num">{exactMoney(change)}</span></div></div>}
+        <div className="mt-2 flex justify-between rounded-lg bg-[#F7F6F3] px-3 py-2 text-sm font-bold"><span>Change</span><span className="num">{exactMoney(change)}</span></div></div>}
       {['gcash', 'maya', 'card', 'bank_transfer'].includes(method) && <input value={reference} onChange={e => setReference(e.target.value)} maxLength={100} placeholder="Reference / approval no. (optional)" aria-label="Payment reference" className="input mt-3"/>}
       {method === 'room_charge' && guest && <p className="mt-3 rounded-lg bg-sky-50 px-3 py-2 text-xs font-semibold text-ocean">Adds to {guest.guest_name}'s folio ({guest.unit}). Collected at check-out.</p>}
       {error && <p role="alert" className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">{error}</p>}
@@ -252,7 +252,7 @@ function SalesView({ date, today, sales, summary, admin, onShow, onDate, onEod }
       <button type="button" onClick={onEod} className="btn btn-light"><Printer size={15}/>End-of-day report</button>
     </div>
     <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--line)] md:grid-cols-4">
-      {[['Sales', String(summary.count), `${summary.voids} voided`], ['Gross', money(summary.gross), `${money(summary.discounts)} discounts`], ['Collected', money(summary.collected), summary.byMethod.filter(m => m.total > 0).map(m => `${m.label} ${money(m.total)}`).join(' · ') || 'nothing yet'], ['On room folios', money(summary.roomCharges), 'charged today']].map(([l, v, s]) => <div key={l} className="min-w-0 bg-[#FAFBF8] p-4"><p className="label">{l}</p><p className="num mt-2 text-xl font-semibold sm:text-2xl">{v}</p><p className="mt-1 truncate text-[11.5px] font-semibold text-[var(--muted)]">{s}</p></div>)}
+      {[['Sales', String(summary.count), `${summary.voids} voided`], ['Gross', money(summary.gross), `${money(summary.discounts)} discounts`], ['Collected', money(summary.collected), summary.byMethod.filter(m => m.total > 0).map(m => `${m.label} ${money(m.total)}`).join(' · ') || 'nothing yet'], ['On room folios', money(summary.roomCharges), 'charged today']].map(([l, v, s]) => <div key={l} className="min-w-0 bg-[#FBFAF6] p-4"><p className="label">{l}</p><p className="num mt-2 text-xl font-semibold sm:text-2xl">{v}</p><p className="mt-1 truncate text-[11.5px] font-semibold text-[var(--muted)]">{s}</p></div>)}
     </div>
     <Card className="mt-5" title="Receipts" subtitle="Tap a receipt to view or reprint it">
       {sales.length === 0 ? <Empty icon={<Receipt size={18}/>} title="No sales on this day"/> : <>
@@ -264,7 +264,7 @@ function SalesView({ date, today, sales, summary, admin, onShow, onDate, onEod }
             <span className="grid justify-items-end gap-1"><span className={`num text-sm font-semibold ${s.status === 'VOID' ? 'line-through' : ''}`}>{money(s.total)}</span>{payment(s)}</span>
           </button>
           {(s.status === 'UNPAID' || (admin && s.status !== 'VOID')) && <div className="flex justify-end px-4 pb-3">{actions(s)}</div>}
-          {settling === s.id && <div className="bg-[#F8FAF7] px-4 py-3">{settleRow(s)}</div>}
+          {settling === s.id && <div className="bg-[#FAF9F7] px-4 py-3">{settleRow(s)}</div>}
         </li>)}</ul>
         <div className="hidden overflow-x-auto md:block"><table className="table w-full">
           <thead><tr><th>Time</th><th>Receipt</th><th>Customer</th><th>Items</th><th>Payment</th><th className="text-right">Total</th><th/></tr></thead>
@@ -276,7 +276,7 @@ function SalesView({ date, today, sales, summary, admin, onShow, onDate, onEod }
             <td>{payment(s)}</td>
             <td className={`num text-right font-semibold ${s.status === 'VOID' ? 'line-through' : ''}`}>{money(s.total)}</td>
             <td onClick={e => e.stopPropagation()} className="text-right">{actions(s)}</td>
-          </tr>, settling === s.id && <tr key={`${s.id}-s`}><td colSpan={7} className="bg-[#F8FAF7]">{settleRow(s)}</td></tr>])}</tbody>
+          </tr>, settling === s.id && <tr key={`${s.id}-s`}><td colSpan={7} className="bg-[#FAF9F7]">{settleRow(s)}</td></tr>])}</tbody>
         </table></div>
       </>}
     </Card>

@@ -3,9 +3,10 @@
     "short_name": "AC Villa",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "#FAFBF8",
-    "theme_color": "#005A1C",
+    "background_color": "#FBFAF6",
+    "theme_color": "#0A2266",
     "icons": [
-        { "src": "/branding/acvilla-icon.png", "type": "image/png", "sizes": "512x512", "purpose": "any" }
+        { "src": "/branding/ac-villa-icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any" },
+        { "src": "/branding/ac-villa-icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any" }
     ]
 }

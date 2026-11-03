@@ -87,8 +87,8 @@ class DemoSeeder extends Seeder
     {
         return Tenant::updateOrCreate(['slug' => $slug], [
             'name' => $name, 'business_name' => $name, 'business_email' => $email,
-            'primary_color' => '#005A1C',
-            'secondary_color' => '#0070C0',
+            'primary_color' => '#0A2266',
+            'secondary_color' => '#0039D5',
             'status' => 'ACTIVE', 'subscription_status' => 'ACTIVE',
             'subscription_started_at' => now()->subMonth(), 'subscription_ends_at' => now()->addYear(),
         ]);

@@ -30,7 +30,7 @@ export default function PosCatalog({ items, initialFilter = 'all' }: { items: Ca
       {([['Items', items.length, 'all'], ['Categories', categories.length, null], ['Low stock', low.length, 'low'], ['Hidden', hidden.length, 'hidden']] as const).map(([label, value, target]) => {
         const Tag = target ? 'button' : 'div';
         return <Tag key={label} {...(target ? { type: 'button' as const, onClick: () => setFilter(target), 'aria-pressed': filter === target } : {})}
-          className={`min-w-0 bg-white p-4 text-left ${target ? 'transition hover:bg-[#FAFBF8] aria-pressed:bg-[var(--mint)]' : ''}`}>
+          className={`min-w-0 bg-white p-4 text-left ${target ? 'transition hover:bg-[#FBFAF6] aria-pressed:bg-[var(--mint)]' : ''}`}>
           <p className="label">{label}</p><p className={`num mt-1.5 text-2xl font-semibold ${label === 'Low stock' && value > 0 ? 'text-[var(--danger)]' : ''}`}>{value}</p>
         </Tag>;
       })}
@@ -73,9 +73,9 @@ function ItemRow({ item, onEdit, onRemove }: { item: CatalogItem; onEdit: () => 
   const [amount, setAmount] = useState('');
   const adjust = (change: number) => router.put(`/admin/settings/pos-items/${item.id}/stock`, { change }, { ...opts, onSuccess: () => { setRestock(false); setAmount(''); } });
   const lowStock = item.track_stock && item.stock <= LOW_STOCK;
-  return <li className={`grid gap-3 px-4 py-3.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:px-5 ${item.active ? '' : 'bg-[#FAFBF8]'}`}>
+  return <li className={`grid gap-3 px-4 py-3.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:px-5 ${item.active ? '' : 'bg-[#FBFAF6]'}`}>
     <div className="flex min-w-0 items-center gap-3">
-      <span className={`grid size-10 shrink-0 place-items-center rounded-xl text-sm font-bold ${item.active ? 'bg-[var(--mint)] text-[#00408C]' : 'bg-[#EDF2EB] text-[var(--muted)]'}`}>{item.name.trim()[0]?.toUpperCase()}</span>
+      <span className={`grid size-10 shrink-0 place-items-center rounded-xl text-sm font-bold ${item.active ? 'bg-[var(--mint)] text-[#002EAD]' : 'bg-[#F3F0EA] text-[var(--muted)]'}`}>{item.name.trim()[0]?.toUpperCase()}</span>
       <div className="min-w-0">
         <p className={`truncate font-bold ${item.active ? '' : 'text-[var(--muted)]'}`}>{item.name}{!item.active && <span className="pill ml-2 align-middle">hidden</span>}</p>
         <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs font-semibold text-[var(--muted)]"><span>{item.category}</span><span>·</span><span className="num text-forest">{money(item.price)}</span></p>
@@ -83,16 +83,16 @@ function ItemRow({ item, onEdit, onRemove }: { item: CatalogItem; onEdit: () => 
     </div>
     <div className="flex flex-wrap items-center gap-2 sm:justify-end">
       {item.track_stock ? <div className="flex items-center gap-1 rounded-xl border border-[var(--line)] bg-white p-1">
-        <button type="button" aria-label={`Remove one ${item.name}`} disabled={item.stock < 1} onClick={() => adjust(-1)} className="grid size-8 place-items-center rounded-lg hover:bg-[#F1F5F0] disabled:opacity-30"><Minus size={14}/></button>
+        <button type="button" aria-label={`Remove one ${item.name}`} disabled={item.stock < 1} onClick={() => adjust(-1)} className="grid size-8 place-items-center rounded-lg hover:bg-[#F5F4F0] disabled:opacity-30"><Minus size={14}/></button>
         <span className={`num min-w-[4.5rem] text-center text-sm font-semibold ${lowStock ? 'text-[var(--danger)]' : ''}`}>{item.stock} <span className="text-[10.5px] font-bold text-[var(--muted)]">left</span></span>
-        <button type="button" aria-label={`Add one ${item.name}`} onClick={() => adjust(1)} className="grid size-8 place-items-center rounded-lg hover:bg-[#F1F5F0]"><Plus size={14}/></button>
+        <button type="button" aria-label={`Add one ${item.name}`} onClick={() => adjust(1)} className="grid size-8 place-items-center rounded-lg hover:bg-[#F5F4F0]"><Plus size={14}/></button>
       </div> : <span className="px-1 text-xs font-semibold text-[var(--muted)]">Unlimited</span>}
       {item.track_stock && <button type="button" onClick={() => setRestock(!restock)} aria-expanded={restock} className={`btn btn-sm ${lowStock ? 'btn-soft' : 'btn-light'}`}><PackagePlus size={13}/>Restock</button>}
       <button type="button" onClick={() => router.put(`/admin/settings/pos-items/${item.id}`, payload(item, { active: !item.active }), opts)} className="btn btn-light btn-sm" title={item.active ? 'Hide from the register' : 'Show on the register'} aria-label={`${item.active ? 'Hide' : 'Show'} ${item.name}`}>{item.active ? <EyeOff size={13}/> : <Eye size={13}/>}<span className="hidden md:inline">{item.active ? 'Hide' : 'Show'}</span></button>
       <button type="button" onClick={onEdit} className="btn btn-light btn-sm" aria-label={`Edit ${item.name}`}><Pencil size={13}/><span className="hidden md:inline">Edit</span></button>
       <button type="button" onClick={onRemove} className="btn btn-danger btn-sm" aria-label={`Delete ${item.name}`}><Trash2 size={13}/></button>
     </div>
-    {restock && <form onSubmit={e => { e.preventDefault(); const n = Number(amount); if (Number.isInteger(n) && n !== 0) adjust(n); }} className="flex flex-wrap items-center gap-1.5 rounded-xl bg-[#F4F8F3] p-2.5 sm:col-span-2">
+    {restock && <form onSubmit={e => { e.preventDefault(); const n = Number(amount); if (Number.isInteger(n) && n !== 0) adjust(n); }} className="flex flex-wrap items-center gap-1.5 rounded-xl bg-[#EEF2FD] p-2.5 sm:col-span-2">
       <span className="mr-1 text-xs font-bold">Delivery received:</span>
       {[6, 12, 24, 48].map(n => <button key={n} type="button" onClick={() => adjust(n)} className="chip !py-1">+{n}</button>)}
       <input type="number" step="1" value={amount} onChange={e => setAmount(e.target.value)} placeholder="+/- other" aria-label={`Stock change for ${item.name}`} className="input !min-h-8 !w-28 !py-1 num"/>
@@ -153,6 +153,6 @@ function Toggle({ label, hint, checked, onChange }: { label: string; hint: strin
   return <label className="flex cursor-pointer items-center justify-between gap-4 py-1">
     <span><span className="block text-sm font-bold">{label}</span><span className="block text-xs font-semibold text-[var(--muted)]">{hint}</span></span>
     <input type="checkbox" role="switch" className="peer sr-only" checked={checked} onChange={e => onChange(e.target.checked)}/>
-    <span aria-hidden="true" className="relative h-6 w-11 shrink-0 rounded-full bg-[#D5E2D3] transition after:absolute after:left-0.5 after:top-0.5 after:size-5 after:rounded-full after:bg-white after:shadow after:transition peer-checked:bg-sea peer-checked:after:translate-x-5 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-sea"/>
+    <span aria-hidden="true" className="relative h-6 w-11 shrink-0 rounded-full bg-[#E3DED2] transition after:absolute after:left-0.5 after:top-0.5 after:size-5 after:rounded-full after:bg-white after:shadow after:transition peer-checked:bg-sea peer-checked:after:translate-x-5 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-sea"/>
   </label>;
 }

@@ -64,7 +64,7 @@ function TaskCard({ task: t, today, items, photoRequired, maxPhotos }: { task: T
       </span>
     </button>
     {expanded && future && <div className="grid gap-3 border-t border-[var(--line)] p-4">
-      <p className="flex items-center gap-2 rounded-xl bg-[#F1F5F0] px-3 py-2.5 text-sm font-semibold text-[#3D4A43]"><Clock size={15}/>Starts on {fmtDay(t.date, { weekday: 'long', month: 'short', day: 'numeric' })}, after the guest checks out at {fmtTime(t.check_out_time)}.</p>
+      <p className="flex items-center gap-2 rounded-xl bg-[#F5F4F0] px-3 py-2.5 text-sm font-semibold text-[#3B404C]"><Clock size={15}/>Starts on {fmtDay(t.date, { weekday: 'long', month: 'short', day: 'numeric' })}, after the guest checks out at {fmtTime(t.check_out_time)}.</p>
       {items.length > 0 && <p className="text-xs font-semibold text-[var(--muted)]">{items.length} checklist steps · photo {photoRequired ? 'required' : 'optional'}</p>}
     </div>}
     {expanded && !future && <div className="grid gap-4 border-t border-[var(--line)] p-4">

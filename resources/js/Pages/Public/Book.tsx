@@ -276,7 +276,7 @@ export default function Book({ property, tenant, bookable, selection = {}, addOn
         <button type="button" className="block w-full text-left disabled:cursor-not-allowed" disabled={!free} aria-pressed={on} onClick={() => toggle(unit)}>
           <span className="flex items-start justify-between gap-3"><strong className="ac-unit-name">{unit.name}</strong><span className={`ac-check ${on ? 'on' : ''}`} aria-hidden="true">{on && <Check size={14}/>}</span></span>
           <small className="block text-slate">{unit.kind === 'venue' ? `Up to ${unit.maximum_occupancy} guests · ${dates.start ? day(dates.start) : 'event day'}` : `Good for ${includedGuests(unit)} pax${unit.maximum_occupancy > includedGuests(unit) ? ` · up to ${unit.maximum_occupancy}` : ''}`}</small>
-          {unit.description && <span className="mt-2 line-clamp-2 block text-sm text-[#56635C]">{unit.description}</span>}
+          {unit.description && <span className="mt-2 line-clamp-2 block text-sm text-[#505869]">{unit.description}</span>}
           <span className="mt-3 flex flex-wrap items-end justify-between gap-2">
             {!check || checking ? <span className="ac-badge muted"><LoaderCircle size={13} className="animate-spin"/> Checking</span> : free ? <span className="ac-badge ok"><Check size={13}/> Available</span> : <span className="ac-badge no">{check.reason || 'Not available'}</span>}
             <span className="text-right">{free && (quotes[unit.id]?.total ?? check?.total) ? <><strong className="ac-unit-price">{money(quotes[unit.id]?.total ?? check!.total!)}</strong><small className="block text-slate">{lengthFor(unit)}</small></> : <><strong className="ac-unit-price">{money(unit.base_rate)}</strong> <small className="text-slate">{rateUnit(unit)}</small></>}</span>

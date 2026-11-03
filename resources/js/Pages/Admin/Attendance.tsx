@@ -54,7 +54,7 @@ export default function Attendance({ date, today, entry, staff }: Props) {
       <div className="mt-4 grid gap-3">
         {staff?.length ? staff.map(member => <div key={member.id} className="card p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-full bg-[#F1F5F0] font-bold">{member.name.trim()[0]?.toUpperCase() || '?'}</span><div className="min-w-0"><p className="truncate font-bold">{member.name}</p><p className="text-xs text-[var(--muted)]">{member.entry ? 'Manual record' : 'No record for this date'}</p></div></div>
+            <div className="flex min-w-0 items-center gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-full bg-[#F5F4F0] font-bold">{member.name.trim()[0]?.toUpperCase() || '?'}</span><div className="min-w-0"><p className="truncate font-bold">{member.name}</p><p className="text-xs text-[var(--muted)]">{member.entry ? 'Manual record' : 'No record for this date'}</p></div></div>
             <div className="flex flex-wrap items-center gap-3 text-sm font-semibold">
               {member.entry ? <><span>In <strong className="num">{time(member.entry.clocked_in_at)}</strong></span><span>{member.entry.clocked_out_at ? <>Out <strong className="num">{time(member.entry.clocked_out_at)}</strong></> : <span className="text-emerald-700">On shift</span>}</span><button type="button" onClick={() => edit(member.entry!)} className="btn btn-light btn-sm border border-[var(--line)]"><Pencil size={14}/>Correct</button></> : <span className="text-[var(--muted)]">No clock-in</span>}
             </div>
@@ -73,7 +73,7 @@ export default function Attendance({ date, today, entry, staff }: Props) {
         <p className="label">{entry?.work_date && entry.work_date !== today ? `Shift started ${day(entry.work_date)}` : 'Your shift today'}</p>
         <h2 className="mt-2 text-2xl font-bold">{entry?.clocked_out_at ? 'Shift completed' : entry ? 'You are on shift' : 'Ready to start?'}</h2>
         <p className="mt-2 text-sm leading-6 text-[var(--muted)]">Clock in when you begin work and clock out when your shift ends. Your times are saved in the daily register.</p>
-        <div className="mt-6 grid grid-cols-2 gap-3 rounded-xl bg-[#F6F8F4] p-4">
+        <div className="mt-6 grid grid-cols-2 gap-3 rounded-xl bg-[#F8F7F4] p-4">
           <div><p className="label">Clock in</p><p className="num mt-2 font-bold">{entry ? time(entry.clocked_in_at) : '-'}</p></div>
           <div><p className="label">Clock out</p><p className="num mt-2 font-bold">{entry?.clocked_out_at ? time(entry.clocked_out_at) : '-'}</p></div>
         </div>

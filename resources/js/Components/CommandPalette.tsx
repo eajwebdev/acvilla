@@ -65,8 +65,8 @@ export default function CommandPalette({ role, platform, open, onOpenChange }: {
             return <div key={command.id}>
               {header && <p className="px-3 pb-1 pt-3 text-[10.5px] font-bold uppercase tracking-[.12em] text-[var(--muted)]">{header}</p>}
               <button type="button" id={`command-${index}`} data-index={index} role="option" aria-selected={index === active} onMouseMove={() => setActive(index)} onClick={() => run(command)}
-                className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold ${index === active ? 'bg-[var(--mint)] text-forest' : 'text-[#3D4A43]'}`}>
-                <span className={`grid size-8 place-items-center rounded-lg ${index === active ? 'bg-white text-ocean' : 'bg-[#F1F5F0]'}`}><Icon size={16}/></span>
+                className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold ${index === active ? 'bg-[var(--mint)] text-forest' : 'text-[#3B404C]'}`}>
+                <span className={`grid size-8 place-items-center rounded-lg ${index === active ? 'bg-white text-ocean' : 'bg-[#F5F4F0]'}`}><Icon size={16}/></span>
                 <span className="flex-1">{command.label}</span>
                 {index === active && <CornerDownLeft size={15} className="text-[var(--muted)]"/>}
               </button>
@@ -74,7 +74,7 @@ export default function CommandPalette({ role, platform, open, onOpenChange }: {
           })}
           {!results.length && <p className="px-3 py-10 text-center text-sm text-[var(--muted)]">No pages match “{query}”.</p>}
         </div>
-        <div className="flex items-center gap-4 border-t border-[var(--line)] bg-[#F8FAF7] px-4 py-2.5 text-[11px] font-semibold text-[var(--muted)]"><span className="flex items-center gap-1.5"><kbd className="kbd">↑</kbd><kbd className="kbd">↓</kbd> navigate</span><span className="flex items-center gap-1.5"><kbd className="kbd">↵</kbd> open</span></div>
+        <div className="flex items-center gap-4 border-t border-[var(--line)] bg-[#FAF9F7] px-4 py-2.5 text-[11px] font-semibold text-[var(--muted)]"><span className="flex items-center gap-1.5"><kbd className="kbd">↑</kbd><kbd className="kbd">↓</kbd> navigate</span><span className="flex items-center gap-1.5"><kbd className="kbd">↵</kbd> open</span></div>
       </Dialog.Content>
     </Dialog.Portal>
   </Dialog.Root>;

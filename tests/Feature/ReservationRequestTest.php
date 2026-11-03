@@ -111,7 +111,7 @@ class ReservationRequestTest extends TestCase
 
         $tenant = Tenant::where('slug', 'ac-villa')->sole();
         $this->assertTrue($tenant->acceptsBookings());
-        $this->assertSame(['#005A1C', '#0070C0', 'ACV'], [$tenant->primary_color, $tenant->secondary_color, $tenant->setting('reference_prefix')]);
+        $this->assertSame(['#0A2266', '#0039D5', 'ACV'], [$tenant->primary_color, $tenant->secondary_color, $tenant->setting('reference_prefix')]);
         $rooms = Room::where('tenant_id', $tenant->id)->where('active', true)->orderBy('id')->get();
         // The published rate card: name => [rate, pax, extra person fee, kind].
         $this->assertSame([

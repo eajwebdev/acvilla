@@ -35,7 +35,7 @@ export default function Bookings({ bookings, filters, active }: Props) {
     </>}>
     <Head title="Bookings"/>
     <div className="mb-4 flex flex-wrap gap-1.5">{tabs.map(([key, label]) => <button key={key} type="button" className="chip" aria-pressed={tab === key && !filters.status} onClick={() => visit({ tab: key === 'all' ? undefined : key, status: undefined })}>{label}{key === 'requests' && requestCount > 0 && <span className="num ml-1.5 rounded-full bg-amber-400 px-1.5 text-[10px] text-[#3a2a00]">{requestCount}</span>}</button>)}
-      <select aria-label="Filter by source" value={filters.source ?? ''} onChange={e => visit({ source: e.target.value || undefined })} className={`rounded-full border px-3 py-1.5 text-xs font-bold ${filters.source ? 'border-forest bg-forest text-white' : 'border-[var(--line)] bg-white text-[#46544C]'}`}><option value="">All sources</option>{SOURCE_GROUPS.map(([group, keys]) => <optgroup key={group} label={group}>{keys.map(k => <option key={k} value={k}>{SOURCES[k]}</option>)}</optgroup>)}</select>
+      <select aria-label="Filter by source" value={filters.source ?? ''} onChange={e => visit({ source: e.target.value || undefined })} className={`rounded-full border px-3 py-1.5 text-xs font-bold ${filters.source ? 'border-forest bg-forest text-white' : 'border-[var(--line)] bg-white text-[#434957]'}`}><option value="">All sources</option>{SOURCE_GROUPS.map(([group, keys]) => <optgroup key={group} label={group}>{keys.map(k => <option key={k} value={k}>{SOURCES[k]}</option>)}</optgroup>)}</select>
       {(filters.status || filters.from || filters.search || filters.source) && <button type="button" onClick={() => { setSearch(''); router.get('/admin/bookings'); }} className="px-2 text-xs font-bold text-ocean">Clear filters</button>}</div>
     <div className="card overflow-x-auto">
       <table className="table w-full min-w-[860px]">
@@ -45,7 +45,7 @@ export default function Bookings({ bookings, filters, active }: Props) {
           {bookings.data.map(b => { const due = balance(b); const cancelled = ['CANCELLED', 'EXPIRED', 'NO_SHOW'].includes(b.status); return <tr key={b.id} className="clickable" onClick={() => setDrawer(b.id)}>
             <td><span className="block font-bold">{b.guest_name}</span><span className="num block text-[11px] text-[var(--muted)]">{b.reference}{b.group_code ? ` · ${b.group_code}` : ''}</span></td>
             <td className="font-semibold">{b.room?.name}<span className="block text-[11px] font-semibold text-[var(--muted)]">{b.property?.name}</span></td>
-            <td className="font-semibold text-[#3D4A43]">{fmtDay(b.check_in)} to {fmtDay(b.check_out)}<span className="block text-[11px] text-[var(--muted)]">{b.guests} {b.guests === 1 ? 'guest' : 'guests'}</span></td>
+            <td className="font-semibold text-[#3B404C]">{fmtDay(b.check_in)} to {fmtDay(b.check_out)}<span className="block text-[11px] text-[var(--muted)]">{b.guests} {b.guests === 1 ? 'guest' : 'guests'}</span></td>
             <td><SourceBadge source={b.source}/></td>
             <td><span className="flex flex-wrap items-center gap-1"><Status value={b.status}/>{b.payments.length > 0 && <span className="pill border-amber-200 bg-amber-50 text-amber-800">verify payment</span>}</span></td>
             <td className={`num text-right font-semibold ${cancelled ? 'text-[var(--muted)]' : due > 0 ? 'text-[var(--danger)]' : 'text-emerald-700'}`}>{cancelled ? '-' : due > 0 ? money(due) : 'Paid'}</td>

@@ -22,7 +22,7 @@ export default function Login({ google = false, return: back }: { google?: boole
   return <AuthLayout eyebrow="Welcome" title="Sign in to continue." intro={google ? 'Book your stay and follow every booking in one place.' : 'Book your stay, follow your bookings, or manage the resort.'}
     footer={google ? <>New guest? <strong className="text-navy">Continue with Google</strong> creates your account.</> : <>New here? <Link href="/register" className="font-semibold text-pink hover:underline">Create a guest account</Link></>}>
     <Head title="Sign in"/>
-    {google && <section className="mt-8 rounded-2xl border border-[#D5E2D3] bg-[linear-gradient(135deg,#F3F8F2,#fff_70%)] p-5" aria-labelledby="guest-signin">
+    {google && <section className="mt-8 rounded-2xl border border-[#E3DED2] bg-[linear-gradient(135deg,#EDF1FC,#fff_70%)] p-5" aria-labelledby="guest-signin">
       <div className="flex items-center gap-3">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-forest text-white"><UserRound size={19}/></span>
         <div><h2 id="guest-signin" className="text-[15px] font-bold text-navy">Guests</h2><p className="text-xs text-slate">Sign in or create your account in one tap.</p></div>

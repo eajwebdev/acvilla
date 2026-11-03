@@ -39,9 +39,6 @@ export default function Stay({ property, tenant, bookable, selection, reviews = 
   return <GuestShell tenant={tenant}>
     <Head title={`${property.name} | ${tenant?.business_name || 'Stay'}`}>
       <meta name="description" content={property.short_description || property.description || `Book ${property.name} in ${property.city}, ${property.province}.`}/>
-      <meta property="og:title" content={`${property.name} | ${tenant?.business_name || 'Stay'}`}/>
-      <meta property="og:description" content={property.short_description || property.description || ''}/>
-      {property.cover_image && <meta property="og:image" content={property.cover_image}/>}
     </Head>
     <div className="container pb-32 pt-6 sm:pt-9 lg:pb-16">
       <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm font-semibold text-slate"><Link href={`/${tenant ? `?tenant=${encodeURIComponent(tenant.slug)}` : ''}`} className="inline-flex items-center gap-1.5 hover:text-navy"><ArrowLeft size={16}/> Home</Link><span aria-hidden="true">/</span><span className="truncate text-navy">{property.name}</span></nav>
@@ -106,7 +103,7 @@ function RoomChoice({ room, selected, onSelect, onPhotos, bookHref, fallbackPhot
       <button type="button" onClick={onSelect} aria-pressed={selected} className="block w-full text-left">
         <span className="flex flex-wrap justify-between gap-x-4 gap-y-1"><strong className="ac-unit-name">{room.name}</strong><span className="whitespace-nowrap"><strong className="ac-unit-price">{money(room.base_rate)}</strong> <small className="text-slate">{rateUnit(room)}</small></span></span>
         <small className="block text-slate">{room.kind === 'venue' ? `Up to ${room.maximum_occupancy} guests` : `Good for ${includedGuests(room)} pax${room.maximum_occupancy > includedGuests(room) ? ` · up to ${room.maximum_occupancy}` : ''}`}{room.kind !== 'venue' && !room.whole_property && roomSpecs(room) !== 'Studio' ? ` · ${roomSpecs(room)}` : ''}</small>
-        {room.description && <span className={`mt-2 block text-sm leading-6 text-[#56635C] ${selected ? '' : 'line-clamp-2'}`}>{room.description}</span>}
+        {room.description && <span className={`mt-2 block text-sm leading-6 text-[#505869] ${selected ? '' : 'line-clamp-2'}`}>{room.description}</span>}
       </button>
       {bookHref && <Link href={bookHref} className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-[var(--ac-blue)]">Book this <ArrowRight size={15}/></Link>}
     </div>

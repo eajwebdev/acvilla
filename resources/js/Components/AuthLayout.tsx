@@ -26,11 +26,11 @@ export default function AuthLayout({ eyebrow, title, intro, children, footer }: 
     </div>
     <aside className="relative hidden overflow-hidden bg-navy lg:block" aria-hidden="true">
       <img src="/images/acvilla/hero-mabinay.jpg" alt="" className="absolute inset-0 h-full w-full object-cover opacity-60"/>
-      <div className="absolute inset-0 bg-[linear-gradient(160deg,rgba(0,90,28,.3)_0%,rgba(0,90,28,.92)_70%)]"/>
+      <div className="absolute inset-0 bg-[linear-gradient(160deg,rgba(10,34,102,.3)_0%,rgba(10,34,102,.92)_70%)]"/>
       <div className="absolute -right-24 -top-24 size-96 rounded-full bg-pink/30 blur-[90px]"/>
       <div className="relative flex h-full flex-col justify-end p-12 text-white xl:p-16">
         <p className="eaj-kicker">AC Villa &amp; Private Resort</p>
-        <h2 className="mt-5 max-w-lg font-serif text-5xl font-semibold leading-[1.08]">Your privacy, more memories, <em className="text-[#ADD3EF]">more love.</em></h2>
+        <h2 className="mt-5 max-w-lg font-serif text-5xl font-semibold leading-[1.08]">Your privacy, more memories, <em className="text-[#FFD84D]">more love.</em></h2>
         <ul className="mt-10 grid max-w-xl gap-3">
           {highlights.map(([Icon, label, body]) => <li key={label} className="flex items-start gap-4 rounded-2xl border border-white/10 bg-white/[.06] p-4 backdrop-blur-md">
             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-pink/90"><Icon size={19}/></span>

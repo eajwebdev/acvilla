@@ -46,11 +46,11 @@ export function RoomDialog({ room, fallbackPhoto, reserveHref, open, onOpenChang
           <p className="ac-eyebrow">{room.whole_property ? 'Exclusive package' : room.kind === 'venue' ? 'Events venue' : 'Room accommodation'}</p>
           <Dialog.Title className="mt-2 font-serif text-2xl font-semibold leading-tight text-[var(--ac-green)]">{room.name}</Dialog.Title>
           <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-slate"><Users size={16}/>{room.kind === 'venue' ? `Up to ${room.maximum_occupancy} guests` : `Good for ${includedGuests(room)} pax${room.maximum_occupancy > includedGuests(room) ? ` · up to ${room.maximum_occupancy}` : ''}`}</p>
-          <div className="mt-5 rounded-2xl bg-[var(--ac-paper)] p-4 ring-1 ring-[#E3EAE1]">
+          <div className="mt-5 rounded-2xl bg-[var(--ac-paper)] p-4 ring-1 ring-[#EBE8E0]">
             <p className="font-serif text-2xl font-semibold text-[var(--ac-green)]">{money(room.base_rate)} <span className="font-sans text-sm font-semibold text-slate">{rateUnit(room)}</span></p>
             {Number(room.extra_guest_fee) > 0 && <p className="mt-1 text-sm text-slate">Extra person: {money(room.extra_guest_fee)} each</p>}
           </div>
-          {room.description && <p className="mt-5 whitespace-pre-line text-[15px] leading-7 text-[#4A5A52]">{room.description}</p>}
+          {room.description && <p className="mt-5 whitespace-pre-line text-[15px] leading-7 text-[#474E5D]">{room.description}</p>}
           {(room.amenities?.length ?? 0) > 0 && <ul className="mt-5 grid grid-cols-2 gap-x-4 gap-y-2 text-sm" aria-label="Amenities">{room.amenities!.map(item => <li key={item} className="flex items-center gap-2"><Check size={15} className="shrink-0 text-[var(--ac-green-mid)]"/>{item}</li>)}</ul>}
           {reserveHref && <Link href={reserveHref} className="ac-btn ac-btn-primary mt-7 w-full justify-center" onClick={() => onOpenChange(false)}>Reserve {room.kind === 'venue' ? 'this venue' : room.whole_property ? 'the whole resort' : 'this room'} <ChevronRight size={20}/></Link>}
           <p className="mt-3 text-center text-xs text-slate">No payment online. The owner calls you to confirm.</p>

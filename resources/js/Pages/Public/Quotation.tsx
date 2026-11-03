@@ -84,7 +84,7 @@ export default function Quotation() {
   return <Shell><Head title="Quotation"/><div className="eaj-quote print-area">
     <div className="eq-topline"/>
     <header className="eq-masthead">
-      <Brand href="/platform" tone="light"/>
+      <Brand href="/platform"/>
       <span className="eq-document-label">COMMERCIAL QUOTATION</span>
     </header>
 

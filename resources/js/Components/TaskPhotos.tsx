@@ -32,10 +32,10 @@ export default function TaskPhotos({ taskId, photos, done, max = 12, big = false
   return <div>
     <div className="flex flex-wrap gap-2">
       {photos.map(p => <div key={p.id} className="group relative">
-        <button type="button" onClick={() => setView(p)} className={`block overflow-hidden rounded-xl border border-[var(--line)] bg-[#F1F5F0] ${big ? 'size-24' : 'size-16'}`} aria-label="View photo"><img src={p.url} alt="Room after cleaning" loading="lazy" className="size-full object-cover"/></button>
+        <button type="button" onClick={() => setView(p)} className={`block overflow-hidden rounded-xl border border-[var(--line)] bg-[#F5F4F0] ${big ? 'size-24' : 'size-16'}`} aria-label="View photo"><img src={p.url} alt="Room after cleaning" loading="lazy" className="size-full object-cover"/></button>
         {canDelete(p) && <button type="button" aria-label="Remove photo" onClick={() => confirm('Remove this photo?') && router.delete(`/admin/cleaning/photos/${p.id}`, { preserveScroll: true, preserveState: true })} className="absolute -right-1.5 -top-1.5 grid size-6 place-items-center rounded-full border border-[var(--line)] bg-white text-[var(--muted)] shadow-sm hover:text-[var(--danger)]"><Trash2 size={12}/></button>}
       </div>)}
-      {photos.length < max && !readOnly && <label className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-[#7FB08A] bg-green-50 text-[11px] font-bold text-[#00408C] hover:bg-[#EBF4FB] ${big ? 'size-24' : 'size-16'} ${busy ? 'pointer-events-none opacity-60' : ''}`}>
+      {photos.length < max && !readOnly && <label className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-[#5480F5] bg-green-50 text-[11px] font-bold text-[#002EAD] hover:bg-[#EEF3FF] ${big ? 'size-24' : 'size-16'} ${busy ? 'pointer-events-none opacity-60' : ''}`}>
         {busy ? <LoaderCircle size={big ? 22 : 18} className="animate-spin"/> : photos.length ? <ImagePlus size={big ? 22 : 18}/> : <Camera size={big ? 22 : 18}/>}
         {busy ? 'Uploading' : photos.length ? 'Add more' : 'Take photo'}
         <input ref={input} type="file" accept="image/*" capture="environment" multiple className="sr-only" onChange={e => upload(e.target.files)} disabled={busy}/>

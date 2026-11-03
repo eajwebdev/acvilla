@@ -37,7 +37,7 @@ export default function Dashboard({ tenants, period, metrics, previous, series }
       </div>)}
     </div>
     <div className="mt-6 grid gap-6 xl:grid-cols-[2fr_1fr]">
-      <DashboardChart data={series} lines={[{ key: 'subscriptions', name: 'Subscription sales', color: '#0070C0', money: true }, { key: 'bookings', name: 'Bookings', color: '#005A1C' }]}/>
+      <DashboardChart data={series} lines={[{ key: 'subscriptions', name: 'Subscription sales', color: '#0039D5', money: true }, { key: 'bookings', name: 'Bookings', color: '#0A2266' }]}/>
       <Card title="Business health" subtitle="Live client state and recurring revenue">
         <dl className="grid px-5 py-2">{[['Monthly recurring revenue', money(metrics.mrr)], ['Annual run rate', money(metrics.arr)], ['Booking value', money(metrics.bookingValue)], ['Trial clients', metrics.trial], ['Locked clients', metrics.locked], ['Suspended clients', metrics.suspended]].map(([label, value]) => <div key={label} className="flex justify-between gap-3 border-b border-[var(--line)] py-3 text-sm last:border-0"><dt className="text-[var(--muted)]">{label}</dt><dd className="num font-bold">{value}</dd></div>)}</dl>
       </Card>

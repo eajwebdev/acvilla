@@ -36,10 +36,10 @@ export default function Home() {
       <div className="container grid items-center gap-14 py-20 md:py-28 lg:grid-cols-[1.05fr_.95fr]">
         <div>
           <p className="eaj-kicker">StaySuite by EAJ</p>
-          <h1 className="mt-6 max-w-3xl font-serif text-5xl font-medium leading-[1.02] tracking-[-.035em] md:text-7xl">Your hospitality business, <em className="text-[#ff6b9f]">beautifully</em> connected.</h1>
+          <h1 className="mt-6 max-w-3xl font-serif text-5xl font-medium leading-[1.02] tracking-[-.035em] md:text-7xl">Your hospitality business, <em className="text-[#FFC800]">beautifully</em> connected.</h1>
           <p className="mt-7 max-w-xl text-lg leading-8 text-white/70">Direct bookings, payments, housekeeping and insights for resorts, inns and vacation rentals across the Philippines, in one calm workspace.</p>
           <div className="mt-9 flex flex-wrap gap-3"><Link href="/quotation" className="btn btn-pink">Build your quote <ArrowRight size={18}/></Link><Link href="/login" className="btn border-white/20 bg-white/10 text-white backdrop-blur hover:bg-white/15">Try the live demo</Link></div>
-          <ul className="mt-9 flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/65">{['Peso pricing & local payments', 'Phone-ready staff workspace', 'Nightly backups'].map(item => <li key={item} className="inline-flex items-center gap-2"><Check size={16} className="text-[#ff6b9f]"/>{item}</li>)}</ul>
+          <ul className="mt-9 flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/65">{['Peso pricing & local payments', 'Phone-ready staff workspace', 'Nightly backups'].map(item => <li key={item} className="inline-flex items-center gap-2"><Check size={16} className="text-[#FFC800]"/>{item}</li>)}</ul>
         </div>
         <ProductPreview/>
       </div>

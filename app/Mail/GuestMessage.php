@@ -73,7 +73,7 @@ class GuestMessage extends Mailable
         $parts = preg_split('~('.trim(self::URL, '~').')~', $text, -1, PREG_SPLIT_DELIM_CAPTURE);
 
         return collect($parts)->map(fn (string $part, int $i) => $i % 2
-            ? '<a href="'.e($part).'" style="color:#0070C0;">'.e($part).'</a>'
+            ? '<a href="'.e($part).'" style="color:#0039D5;">'.e($part).'</a>'
             : e($part))->implode('');
     }
 }

@@ -9,7 +9,7 @@ export default function SettingsLayout({ title, subtitle, actions, children }: P
   const { auth } = usePage<{ auth: { user: { name: string; role: string } } }>().props;
   const admin = auth.user.role === 'ADMIN';
   const active = typeof window !== 'undefined' ? window.location.pathname : '';
-  const linkClass = (on: boolean) => `flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[13.5px] font-semibold ${on ? 'bg-[var(--mint)] text-forest' : 'text-[#3D4A43] hover:bg-[#F1F5F0] hover:text-forest'}`;
+  const linkClass = (on: boolean) => `flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[13.5px] font-semibold ${on ? 'bg-[var(--mint)] text-forest' : 'text-[#3B404C] hover:bg-[#F5F4F0] hover:text-forest'}`;
   return <DashboardShell bare>
     <div className="lg:grid lg:min-h-[calc(100vh-3.5rem)] lg:grid-cols-[218px_minmax(0,1fr)]">
       <nav aria-label="Settings sections" className="border-b border-[var(--line)] bg-white px-3 pb-3 pt-5 thin-scroll lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] lg:overflow-y-auto lg:border-b-0 lg:border-r">

@@ -42,13 +42,13 @@ export default function Cleaning({ date, today, view: initialView, tasks, checkl
     <div className="mb-3 flex items-center justify-between"><p className="label">Overview</p><div className="seg"><button type="button" aria-pressed={view === 'timeline'} onClick={() => setView('timeline')}>Timeline</button><button type="button" aria-pressed={view === 'workload'} onClick={() => setView('workload')}>Workload</button></div></div>
 
     {view === 'timeline' ? <Card title="Turnaround timeline" bodyClass="px-5 pb-5">
-      <div className="flex flex-wrap gap-4 py-3 text-xs font-semibold">{[['bg-sea', 'Done'], ['bg-blue-600', 'In progress'], ['border-2 border-dashed border-amber-500', 'Not started'], ['bg-[#c2453d]', 'At risk'], ['bg-[#E3EAE1]', 'Waiting']].map(([c, l]) => <span key={l} className="flex items-center gap-1.5"><span className={`h-2.5 w-4 rounded-full ${c}`}/>{l}</span>)}</div>
+      <div className="flex flex-wrap gap-4 py-3 text-xs font-semibold">{[['bg-sea', 'Done'], ['bg-blue-600', 'In progress'], ['border-2 border-dashed border-amber-500', 'Not started'], ['bg-[#c2453d]', 'At risk'], ['bg-[#EBE8E0]', 'Waiting']].map(([c, l]) => <span key={l} className="flex items-center gap-1.5"><span className={`h-2.5 w-4 rounded-full ${c}`}/>{l}</span>)}</div>
       <div className="overflow-x-auto"><div className="relative min-w-[720px] pl-28 pr-6">
         <div className="relative h-6">{Array.from({ length: END - START + 1 }, (_, i) => START + i).map(h => <span key={h} className="num absolute -translate-x-1/2 text-[10px] font-semibold text-[var(--muted)]" style={{ left: pct(h) }}>{h === 12 ? '12nn' : h > 12 ? `${h - 12}pm` : `${h}am`}</span>)}</div>
         <div className="relative" style={{ minHeight: Math.max(76, tasks.length * 40 + 36) }}>
-          {Array.from({ length: END - START + 1 }, (_, i) => START + i).map(h => <span key={h} className="absolute inset-y-0 w-px bg-[#EDF2EB]" style={{ left: pct(h) }}/>)}
-          <span className="absolute inset-y-0 bg-[#F1F5F0]" style={{ left: pct(toHours(checkOutTime)), width: `calc(${pct(toHours(checkInTime))} - ${pct(toHours(checkOutTime))})` }}/>
-          {[[checkOutTime, 'Check-out'], [checkInTime, 'Check-in']].map(([t, l]) => <span key={l} className="absolute inset-y-0 border-l border-dashed border-[#9AA59E]" style={{ left: pct(toHours(t)) }}><span className="absolute -top-0.5 left-1 whitespace-nowrap rounded-full border border-[#7FB08A] bg-white px-2 py-0.5 text-[10px] font-bold">{l} {fmtTime(t)}</span></span>)}
+          {Array.from({ length: END - START + 1 }, (_, i) => START + i).map(h => <span key={h} className="absolute inset-y-0 w-px bg-[#F3F0EA]" style={{ left: pct(h) }}/>)}
+          <span className="absolute inset-y-0 bg-[#F5F4F0]" style={{ left: pct(toHours(checkOutTime)), width: `calc(${pct(toHours(checkInTime))} - ${pct(toHours(checkOutTime))})` }}/>
+          {[[checkOutTime, 'Check-out'], [checkInTime, 'Check-in']].map(([t, l]) => <span key={l} className="absolute inset-y-0 border-l border-dashed border-[#939BAC]" style={{ left: pct(toHours(t)) }}><span className="absolute -top-0.5 left-1 whitespace-nowrap rounded-full border border-[#5480F5] bg-white px-2 py-0.5 text-[10px] font-bold">{l} {fmtTime(t)}</span></span>)}
           {isToday && nowH >= START && nowH <= END && <span className="absolute inset-y-0 z-10 border-l border-dashed border-forest" style={{ left: pct(nowH) }}><span className="absolute -top-0.5 -translate-x-1/2 whitespace-nowrap rounded-full bg-forest px-2 py-0.5 text-[10px] font-bold text-white">Now {now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span></span>}
           {tasks.length === 0 ? <p className="absolute inset-0 grid place-items-center pt-6 text-sm font-semibold text-[var(--muted)]">No rooms scheduled.</p>
             : tasks.map((t, i) => {
@@ -56,7 +56,7 @@ export default function Cleaning({ date, today, view: initialView, tasks, checkl
               const c = tone(t);
               return <div key={t.id} className="absolute inset-x-0 flex items-center" style={{ top: 30 + i * 40, height: 28 }}>
                 <span className="absolute -left-28 w-24 truncate text-xs font-bold">{t.unit}</span>
-                <span className="absolute h-1.5 rounded-full bg-[#E3EAE1]" style={{ left: pct(toHours(t.check_out_time)), width: `calc(${pct(toHours(t.ready_by))} - ${pct(toHours(t.check_out_time))})` }}/>
+                <span className="absolute h-1.5 rounded-full bg-[#EBE8E0]" style={{ left: pct(toHours(t.check_out_time)), width: `calc(${pct(toHours(t.ready_by))} - ${pct(toHours(t.check_out_time))})` }}/>
                 <button type="button" onClick={() => setOpen(open === t.id ? null : t.id)} title={`${t.unit}: ${c.label}`} className={`absolute h-5 rounded-full ${c.bar}`} style={{ left: pct(Math.min(from, to)), width: `max(10px, calc(${pct(Math.max(from, to))} - ${pct(Math.min(from, to))}))` }}/>
               </div>;
             })}
@@ -65,13 +65,13 @@ export default function Cleaning({ date, today, view: initialView, tasks, checkl
     </Card> : <Card title="Workload" subtitle="Turnovers per cleaner for the day" bodyClass="p-5">
       {tasks.length === 0 ? <Empty icon={<Users size={18}/>} title="No turnovers to share out"/> : <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{workload.map(([name, list]) => <div key={name} className="rounded-xl border border-[var(--line)] p-4">
         <div className="flex items-center justify-between"><p className={`font-bold ${name === 'Unassigned' ? 'text-amber-700' : ''}`}>{name}</p><span className="num text-sm font-semibold">{list.filter(t => t.status === 'DONE').length}/{list.length}</span></div>
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#EDF2EB]"><div className="h-full bg-sea" style={{ width: `${100 * list.filter(t => t.status === 'DONE').length / list.length}%` }}/></div>
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#F3F0EA]"><div className="h-full bg-sea" style={{ width: `${100 * list.filter(t => t.status === 'DONE').length / list.length}%` }}/></div>
         <ul className="mt-3 grid gap-1 text-xs font-semibold">{list.map(t => <li key={t.id} className="flex items-center justify-between"><span className="flex items-center gap-2"><span className={`size-2 rounded-full ${tone(t).dot}`}/>{t.unit}</span><span className="text-[var(--muted)]">by {fmtTime(t.ready_by)}</span></li>)}</ul>
       </div>)}</div>}
     </Card>}
 
     <Card className="mt-4" title="Turnaround progress" action={<span className="num text-sm font-semibold text-[var(--muted)]">{counts.done}/{tasks.length} ready</span>} bodyClass="px-5 py-4">
-      <div className="flex h-2.5 overflow-hidden rounded-full bg-[#E3EAE1]">{tasks.length > 0 && [[counts.done, 'bg-sea'], [counts.progress, 'bg-blue-600'], [counts.risk, 'bg-[#c2453d]'], [counts.waiting, 'bg-amber-400']].map(([n, c]) => <span key={c as string} className={c as string} style={{ width: `${100 * (n as number) / tasks.length}%` }}/>)}</div>
+      <div className="flex h-2.5 overflow-hidden rounded-full bg-[#EBE8E0]">{tasks.length > 0 && [[counts.done, 'bg-sea'], [counts.progress, 'bg-blue-600'], [counts.risk, 'bg-[#c2453d]'], [counts.waiting, 'bg-amber-400']].map(([n, c]) => <span key={c as string} className={c as string} style={{ width: `${100 * (n as number) / tasks.length}%` }}/>)}</div>
       <div className="mt-3 flex flex-wrap gap-5 text-xs font-semibold text-[var(--muted)]">{[[counts.risk, 'At risk', 'bg-[#c2453d]'], [counts.progress, 'In progress', 'bg-blue-600'], [counts.waiting, 'Not started', 'bg-amber-400'], [counts.done, 'Done', 'bg-sea']].map(([n, l, c]) => <span key={l as string} className="flex items-center gap-1.5"><span className={`size-2 rounded-full ${c}`}/><span className="num font-bold text-[var(--ink)]">{n as number}</span>{l as string}</span>)}</div>
     </Card>
 
@@ -85,9 +85,9 @@ export default function Cleaning({ date, today, view: initialView, tasks, checkl
             <tr key={t.id} className="clickable" onClick={() => setOpen(expanded ? null : t.id)}>
               <td className="font-bold"><span className="flex items-center gap-2"><ChevronRight size={14} className={`text-[var(--muted)] transition ${expanded ? 'rotate-90' : ''}`}/>{t.unit}</span></td>
               <td className="text-xs font-semibold"><span className="num">{fmtTime(t.check_out_time)}</span> → <span className="num">{fmtTime(t.ready_by)}</span><span className="block text-[var(--muted)]">{t.next_guest ? `Next: ${t.next_guest}` : 'No arrival today'}</span></td>
-              <td onClick={e => e.stopPropagation()}><select aria-label={`Cleaner for ${t.unit}`} value={t.assigned_to ?? ''} onChange={e => update(t, { assigned_to: e.target.value ? Number(e.target.value) : null })} className="rounded-lg border border-[var(--line)] bg-[#F4F7F3] px-2 py-1.5 text-xs font-bold"><option value="">Unassigned</option>{cleaners.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select></td>
+              <td onClick={e => e.stopPropagation()}><select aria-label={`Cleaner for ${t.unit}`} value={t.assigned_to ?? ''} onChange={e => update(t, { assigned_to: e.target.value ? Number(e.target.value) : null })} className="rounded-lg border border-[var(--line)] bg-[#F7F6F3] px-2 py-1.5 text-xs font-bold"><option value="">Unassigned</option>{cleaners.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select></td>
               <td className={`num text-sm font-semibold ${t.risk ? 'text-[var(--danger)]' : ''}`}>{fmtTime(t.ready_by)}</td>
-              <td><span className="flex items-center gap-2"><span className="h-1.5 w-20 overflow-hidden rounded-full bg-[#EDF2EB]"><span className="block h-full bg-sea" style={{ width: `${t.checklist_total ? 100 * t.checklist.length / t.checklist_total : (t.status === 'DONE' ? 100 : 0)}%` }}/></span><span className="num text-xs font-semibold">{t.checklist.length}/{t.checklist_total}</span>{t.photos.length > 0 && <span className="num flex items-center gap-0.5 text-xs font-semibold text-[#00408C]" title={`${t.photos.length} photos`}><Camera size={12}/>{t.photos.length}</span>}</span></td>
+              <td><span className="flex items-center gap-2"><span className="h-1.5 w-20 overflow-hidden rounded-full bg-[#F3F0EA]"><span className="block h-full bg-sea" style={{ width: `${t.checklist_total ? 100 * t.checklist.length / t.checklist_total : (t.status === 'DONE' ? 100 : 0)}%` }}/></span><span className="num text-xs font-semibold">{t.checklist.length}/{t.checklist_total}</span>{t.photos.length > 0 && <span className="num flex items-center gap-0.5 text-xs font-semibold text-[#002EAD]" title={`${t.photos.length} photos`}><Camera size={12}/>{t.photos.length}</span>}</span></td>
               <td onClick={e => e.stopPropagation()}><span className="flex items-center gap-2"><span className={`flex items-center gap-1.5 text-xs font-bold ${t.risk && t.status !== 'DONE' ? 'text-[var(--danger)]' : ''}`}><span className={`size-2 rounded-full ${c.dot}`}/>{c.label}</span>
                 {t.status === 'NOT_STARTED' && date > today && <span className="text-[11px] font-semibold text-[var(--muted)]">from {fmtDay(date)}</span>}
                 {t.status === 'NOT_STARTED' && date <= today && <button type="button" onClick={() => update(t, { status: 'IN_PROGRESS' })} className="btn btn-light btn-sm"><Play size={12}/>Start</button>}
@@ -95,7 +95,7 @@ export default function Cleaning({ date, today, view: initialView, tasks, checkl
                 {t.status === 'DONE' && <button type="button" onClick={() => update(t, { status: 'NOT_STARTED', checklist: [] })} title="Reset" aria-label="Reset task" className="btn btn-light btn-sm"><RotateCcw size={12}/></button>}
               </span></td>
             </tr>,
-            expanded && <tr key={`${t.id}-x`}><td colSpan={6} className="bg-[#F8FAF7]"><Checklist task={t} items={checklist} locked={date > today} onSave={data => update(t, data)}/></td></tr>,
+            expanded && <tr key={`${t.id}-x`}><td colSpan={6} className="bg-[#FAF9F7]"><Checklist task={t} items={checklist} locked={date > today} onSave={data => update(t, data)}/></td></tr>,
           ]; })}
         </tbody>
       </table>

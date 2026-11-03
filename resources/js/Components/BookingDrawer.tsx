@@ -61,7 +61,7 @@ export default function BookingDrawer({ id, onClose }: { id: number | null; onCl
         {error && <p role="alert" className="m-5 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">{error}</p>}
         {data && b && <>
           <div className="grid gap-3 px-5 py-4">
-            <div className="flex items-center gap-3 rounded-xl bg-[#F4F7F3] p-3"><span className="grid size-10 place-items-center rounded-lg bg-white text-ocean"><BedDouble size={18}/></span><div className="min-w-0 flex-1"><p className="truncate font-bold">{b.unit}</p><p className="truncate text-xs font-semibold text-[var(--muted)]">{b.property} · {b.guests} {b.guests === 1 ? 'guest' : 'guests'}</p></div>{b.guest_phone && <a href={telHref(b.guest_phone)} className="flex items-center gap-1.5 text-xs font-bold text-ocean"><Phone size={14}/>{b.guest_phone}</a>}</div>
+            <div className="flex items-center gap-3 rounded-xl bg-[#F7F6F3] p-3"><span className="grid size-10 place-items-center rounded-lg bg-white text-ocean"><BedDouble size={18}/></span><div className="min-w-0 flex-1"><p className="truncate font-bold">{b.unit}</p><p className="truncate text-xs font-semibold text-[var(--muted)]">{b.property} · {b.guests} {b.guests === 1 ? 'guest' : 'guests'}</p></div>{b.guest_phone && <a href={telHref(b.guest_phone)} className="flex items-center gap-1.5 text-xs font-bold text-ocean"><Phone size={14}/>{b.guest_phone}</a>}</div>
             {b.unit_kind === 'venue' ? <div className="rounded-xl border border-[var(--line)] p-2.5 text-center"><p className="label">Event date</p><p className="mt-1 font-bold">{fmtDay(b.check_in, { weekday: 'long', month: 'long', day: 'numeric' })}</p></div> : <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-center">
               <div className="rounded-xl border border-[var(--line)] p-2.5"><p className="label">Check-in</p><p className="mt-1 font-bold">{fmtDay(b.check_in, { weekday: 'short', month: 'short', day: 'numeric' })}</p><p className="text-xs font-semibold text-[var(--muted)]">{fmtTime(b.check_in_time)}</p></div>
               <span className="num text-xs font-semibold text-[var(--muted)]">{b.nights}n</span>
@@ -111,7 +111,7 @@ export default function BookingDrawer({ id, onClose }: { id: number | null; onCl
           </Section>
 
           <Section title="Room charges" action={['CONFIRMED', 'PAID', 'CHECKED_IN'].includes(b.status) ? <Link href={`/admin/pos?booking=${b.id}`} className="flex items-center gap-1 text-xs font-bold text-ocean"><ShoppingBasket size={14}/>Sell on POS</Link> : undefined}>
-            {data.charges.length === 0 ? <p className="text-xs font-semibold text-[var(--muted)]">No POS purchases on this stay.</p> : <ul className="grid gap-1.5">{data.charges.map(c => <li key={c.id} className="flex items-start justify-between gap-3 rounded-lg bg-[#F8FAF7] px-3 py-2 text-xs">
+            {data.charges.length === 0 ? <p className="text-xs font-semibold text-[var(--muted)]">No POS purchases on this stay.</p> : <ul className="grid gap-1.5">{data.charges.map(c => <li key={c.id} className="flex items-start justify-between gap-3 rounded-lg bg-[#FAF9F7] px-3 py-2 text-xs">
               <span className="min-w-0"><span className="num font-semibold">{c.number}</span> · {c.items.map(i => `${i.quantity}× ${i.name}`).join(', ')}</span>
               <span className="shrink-0 text-right"><span className={`num block font-bold ${c.status === 'VOID' ? 'line-through opacity-50' : ''}`}>{money(c.total)}</span><span className="text-[10px] font-bold uppercase text-[var(--muted)]">{c.status === 'UNPAID' ? 'open' : c.status === 'VOID' ? 'void' : methodLabel[c.payment_method] ?? 'paid'}</span></span>
             </li>)}</ul>}
@@ -160,7 +160,7 @@ function DownpaymentRow({ amount, total, busy, onSave }: { amount: number; total
   useEffect(() => setValue(amount.toFixed(2)), [amount]);
   const percent = Number(total) > 0 ? Math.round(amount / Number(total) * 100) : 0;
   if (!editing) return <div className="flex justify-between"><dt className="text-[var(--muted)]">Downpayment <span className="text-[11px]">({percent}%)</span> <button type="button" onClick={() => setEditing(true)} className="ml-1 text-[11px] font-bold text-ocean">Change</button></dt><dd className="num font-semibold">{exactMoney(amount)}</dd></div>;
-  return <form className="flex flex-wrap items-end gap-2 rounded-lg bg-[#F4F7F3] p-2" onSubmit={e => { e.preventDefault(); onSave(Number(value)); setEditing(false); }}>
+  return <form className="flex flex-wrap items-end gap-2 rounded-lg bg-[#F7F6F3] p-2" onSubmit={e => { e.preventDefault(); onSave(Number(value)); setEditing(false); }}>
     <label className="field flex-1">Downpayment<input type="number" min="0" step="0.01" max={Number(total)} value={value} onChange={e => setValue(e.target.value)} required/></label>
     <div className="flex gap-1">{[30, 50, 100].map(p => <button key={p} type="button" className="chip" onClick={() => setValue((Math.round(Number(total) * p) / 100).toFixed(2))}>{p}%</button>)}</div>
     <div className="flex gap-1"><button type="button" className="btn btn-light btn-sm" onClick={() => setEditing(false)}>Cancel</button><button disabled={busy} className="btn btn-navy btn-sm">Save</button></div>

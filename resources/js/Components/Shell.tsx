@@ -64,7 +64,7 @@ export default function Shell({ children }: PropsWithChildren) {
 export function SiteFooter() {
   return <footer className="bg-navy text-white">
     <div className="container grid gap-10 py-14 md:grid-cols-[1.6fr_1fr_1fr]">
-      <div><Brand tone="light"/><p className="mt-5 max-w-xs text-sm leading-6 text-white/60">Direct bookings, payments, housekeeping and insights for modern Philippine hospitality.</p></div>
+      <div><Brand/><p className="mt-5 max-w-xs text-sm leading-6 text-white/60">Direct bookings, payments, housekeeping and insights for modern Philippine hospitality.</p></div>
       <FooterColumn title="Product" links={[['/platform', 'Platform'], ['/quotation', 'Pricing'], ['/stays', 'Demo guest site']]}/>
       <FooterColumn title="Account" links={[['/login', 'Sign in'], ['/register', 'Create guest account'], ['/booking', 'My bookings']]}/>
     </div>
