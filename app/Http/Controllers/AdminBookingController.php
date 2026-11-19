@@ -204,15 +204,17 @@ class AdminBookingController extends Controller
             'guest_phone' => 'nullable|string|max:120', 'source' => 'required|in:'.implode(',', array_keys(Booking::SOURCES)),
             'check_in_time' => 'nullable|date_format:H:i', 'check_out_time' => 'nullable|date_format:H:i', 'notes' => 'nullable|string|max:1000']);
         // A late check-out or early check-in is only allowed when it doesn't run into the guest before or after.
-        [$in, $out] = $booking->times();
-        if (($data['check_in_time'] ?? $in) !== $in || ($data['check_out_time'] ?? $out) !== $out) {
-            $booking->loadMissing('room', 'tenant');
-            if ($booking->room && ($clash = app(AvailabilityService::class)->turnoverConflict($booking, $data['check_in_time'] ?? $in, $data['check_out_time'] ?? $out))) {
+        $availability = app(AvailabilityService::class);
+        $availability->guard($booking->tenant_id, function () use ($booking, $data, $availability) {
+            $booking->refresh()->loadMissing('room', 'tenant');
+            [$in, $out] = $booking->times();
+            if ($booking->room && (($data['check_in_time'] ?? $in) !== $in || ($data['check_out_time'] ?? $out) !== $out)
+                && ($clash = $availability->turnoverConflict($booking, $data['check_in_time'] ?? $in, $data['check_out_time'] ?? $out))) {
                 throw ValidationException::withMessages(['check_out_time' => $clash]);
             }
-        }
-        $customer = Customer::fromGuest($booking->tenant_id, $data, $booking->user_id);
-        $booking->update([...$data, 'guest_email' => $customer->email, 'guest_phone' => $customer->phone, 'customer_id' => $customer->id]);
+            $customer = Customer::fromGuest($booking->tenant_id, $data, $booking->user_id);
+            $booking->update([...$data, 'guest_email' => $customer->email, 'guest_phone' => $customer->phone, 'customer_id' => $customer->id]);
+        });
         $this->audit($request, $booking, 'booking.updated');
 
         return back()->with('success', 'Booking details saved.');
@@ -253,8 +255,8 @@ class AdminBookingController extends Controller
     public function hold(Request $request, Booking $booking, AvailabilityService $availability)
     {
         abort_unless($booking->tenant_id === $request->user()->tenant_id, 404);
-        $booking = DB::transaction(function () use ($request, $booking, $availability) {
-            Room::where('property_id', $booking->property_id)->orderBy('id')->lockForUpdate()->get();
+        // The guard also checks the request's own early arrival or late departure against the guests booked since.
+        $booking = $availability->guard($booking->tenant_id, function () use ($request, $booking, $availability) {
             $booking = Booking::with('room.property.tenant')->whereKey($booking->id)->lockForUpdate()->firstOrFail();
             abort_unless(in_array($booking->status, ['PENDING', 'AWAITING_PAYMENT', 'EXPIRED'], true), 422);
             $lapsed = $booking->status === 'EXPIRED' || ! $booking->expires_at?->isFuture();
@@ -280,8 +282,8 @@ class AdminBookingController extends Controller
     {
         abort_unless($booking->tenant_id === $request->user()->tenant_id, 404);
         $data = $request->validate(['check_out' => 'required|date_format:Y-m-d']);
-        $booking = DB::transaction(function () use ($request, $booking, $data, $availability, $pricing) {
-            Room::where('property_id', $booking->property_id)->orderBy('id')->lockForUpdate()->get();
+        // rangeFree() covers the extra nights; the guard also covers the hours on the new last day.
+        $booking = $availability->guard($booking->tenant_id, function () use ($request, $booking, $data, $availability, $pricing) {
             $booking = Booking::with('room.property.tenant', 'price')->whereKey($booking->id)->lockForUpdate()->firstOrFail();
             abort_unless($booking->room && in_array($booking->status, ['PENDING', 'AWAITING_PAYMENT', 'PAID', 'CONFIRMED', 'CHECKED_IN'], true), 422);
             abort_if($booking->holdLapsed(), 422);

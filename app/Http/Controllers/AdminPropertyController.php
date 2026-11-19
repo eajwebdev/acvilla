@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\Property;
 use App\Models\Room;
 use App\Rules\ImageSource;
+use App\Services\AvailabilityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -62,12 +63,13 @@ class AdminPropertyController extends Controller
         return back()->with('success', 'Room created.');
     }
 
-    public function updateRoom(Request $request, Room $room)
+    public function updateRoom(Request $request, Room $room, AvailabilityService $availability)
     {
         abort_unless($room->tenant_id === $request->user()->tenant_id, 404);
         $this->admin($request);
         $data = $this->validateRoom($request, ['active' => 'boolean']);
-        $room->update($data);
+        // Fewer units, or turning a unit into the whole-resort package, must not squeeze bookings already taken.
+        $availability->guard($room->tenant_id, fn () => $room->update($data));
         $this->audit($request, 'room.updated', $room);
 
         return back()->with('success', 'Room updated.');

@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\BlockedDate;
 use App\Models\Booking;
 use App\Models\Room;
+use App\Services\AvailabilityService;
 use App\Services\OperationsService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class AdminCalendarController extends Controller
@@ -47,7 +50,7 @@ class AdminCalendarController extends Controller
         ]);
     }
 
-    public function block(Request $request)
+    public function block(Request $request, AvailabilityService $availability)
     {
         $data = $request->validate([
             'room_id' => ['required', 'integer'],
@@ -57,15 +60,18 @@ class AdminCalendarController extends Controller
         ]);
         $tenantId = $request->user()->tenant_id;
         $room = Room::where('tenant_id', $tenantId)->findOrFail($data['room_id']);
-        $occupied = Booking::where('room_id', $room->id)->whereDate('check_in', '<', $data['ends_on'])
-            ->whereDate('check_out', '>', $data['starts_on'])->where(function ($query) {
-                $query->whereIn('status', ['PAID', 'CONFIRMED', 'CHECKED_IN'])
-                    ->orWhere(fn ($hold) => $hold->whereIn('status', ['PENDING', 'AWAITING_PAYMENT'])->where('expires_at', '>', now()));
-            })->count();
-        abort_if($occupied >= $room->quantity, 422, 'This unit already has a reservation for those dates.');
-        abort_if(BlockedDate::where('room_id', $room->id)->whereDate('starts_on', '<', $data['ends_on'])
-            ->whereDate('ends_on', '>', $data['starts_on'])->exists(), 422, 'This unit is already blocked for those dates.');
-        BlockedDate::create(['tenant_id' => $tenantId, ...$data]);
+        DB::transaction(function () use ($tenantId, $room, $data, $availability) {
+            // Same lock and same "holds the unit" rule as a booking, so a block and a booking can't land together.
+            Room::where('tenant_id', $tenantId)->orderBy('id')->lockForUpdate()->get();
+            $occupied = $availability->holding(Booking::where('room_id', $room->id), $data['starts_on'], $data['ends_on'])->count();
+            if ($occupied >= $room->quantity) {
+                throw ValidationException::withMessages(['starts_on' => "{$room->name} already has a reservation for those dates. Move or cancel it first."]);
+            }
+            if (BlockedDate::where('room_id', $room->id)->whereDate('starts_on', '<', $data['ends_on'])->whereDate('ends_on', '>', $data['starts_on'])->exists()) {
+                throw ValidationException::withMessages(['starts_on' => "{$room->name} is already blocked for those dates."]);
+            }
+            BlockedDate::create(['tenant_id' => $tenantId, ...$data]);
+        });
 
         return back()->with('success', 'Dates blocked.');
     }

@@ -19,8 +19,9 @@ class BookingService
     public function create(Room $room, array $data, ?int $userId = null): Booking
     {
         return DB::transaction(function () use ($room, $data, $userId) {
-            // Lock every unit of the property, since a whole-property booking competes with all of them.
-            Room::where('property_id', $room->property_id)->orderBy('id')->lockForUpdate()->get();
+            // Lock every unit of the business (a whole-property booking competes with all of them). Every booking
+            // change locks this same set in the same order, so two of them wait for each other instead of deadlocking.
+            Room::where('tenant_id', $room->tenant_id)->orderBy('id')->lockForUpdate()->get();
             $room = Room::with('property.tenant')->whereKey($room->id)->firstOrFail();
             $settings = $room->property->tenant->settings;
             if ($error = $this->availability->stayLengthError($room, $data['check_in'], $data['check_out'])) {

@@ -1,0 +1,11 @@
+{
+  "singleQuote": true,
+  "printWidth": 120,
+  "tabWidth": 2,
+  "trailingComma": "all",
+  "arrowParens": "avoid",
+  "plugins": ["prettier-plugin-organize-imports", "prettier-plugin-tailwindcss"],
+  "tailwindStylesheet": "./resources/css/app.css",
+  "tailwindFunctions": ["clsx", "cn"],
+  "overrides": [{ "files": "*.css", "options": { "printWidth": 160 } }]
+}

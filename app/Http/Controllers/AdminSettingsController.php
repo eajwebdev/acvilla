@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\Room;
+use App\Services\AvailabilityService;
 use App\Services\TenantSettings;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -39,7 +40,8 @@ class AdminSettingsController extends Controller
         }
         $tenant = $request->user()->tenant;
         $before = $tenant->settings;
-        $tenant->update(['settings' => array_merge($before, $data)]);
+        // Bookings on the standard hours follow them, so new hours must not run one guest into the next.
+        app(AvailabilityService::class)->guard($tenant->id, fn () => $tenant->update(['settings' => array_merge($before, $data)]));
         if (isset($data['amenities'])) {
             $this->dropRemovedAmenities($tenant->id, $data['amenities']);
         }

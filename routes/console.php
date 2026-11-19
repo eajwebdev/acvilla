@@ -15,9 +15,12 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Artisan::command('bookings:expire-holds', function () {
-    $lapsed = Booking::whereIn('status', ['PENDING', 'AWAITING_PAYMENT'])->where('expires_at', '<=', now())
-        ->whereDoesntHave('payments', fn ($payments) => $payments->where('status', 'PENDING'))->get();
-    $count = Booking::whereKey($lapsed->pluck('id'))->update(['status' => 'EXPIRED']);
+    $stillLapsed = fn ($query) => $query->whereIn('status', ['PENDING', 'AWAITING_PAYMENT'])->where('expires_at', '<=', now())
+        ->whereDoesntHave('payments', fn ($payments) => $payments->where('status', 'PENDING'));
+    // Each hold is checked again as it is expired, so one the owner reopened or confirmed a moment ago is left alone.
+    $lapsed = $stillLapsed(Booking::query())->get()
+        ->filter(fn (Booking $b) => $stillLapsed(Booking::whereKey($b->id))->update(['status' => 'EXPIRED']) > 0);
+    $count = $lapsed->count();
     // Tell the owner in the bell, once per request (facilities booked together are one line).
     $lapsed->groupBy(fn (Booking $b) => $b->group_code ?? 'b'.$b->id)->each(fn ($group) => app(App\Services\BookingNotifier::class)->record($group, 'expired'));
     $this->info("Expired {$count} booking holds.");

@@ -9,6 +9,8 @@ use App\Models\SeasonalRate;
 use App\Models\Tenant;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class AvailabilityService
 {
@@ -262,8 +264,94 @@ class AvailabilityService
         return null;
     }
 
+    /**
+     * Run a change that can move bookings against each other (a unit's quantity, the standard hours, a stay's dates
+     * or times) with every unit of the business locked, and undo it when it leaves two bookings clashing that did
+     * not clash before. Clashes that were already there are not blamed on this change.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $change
+     * @return T
+     */
+    public function guard(int $tenantId, callable $change): mixed
+    {
+        return DB::transaction(function () use ($tenantId, $change) {
+            Room::where('tenant_id', $tenantId)->orderBy('id')->lockForUpdate()->get();
+            $before = $this->clashes($tenantId);
+            $result = $change();
+            $new = array_values(array_diff($this->clashes($tenantId), $before));
+            if ($new) {
+                $more = count($new) > 3 ? ' (and '.(count($new) - 3).' more)' : '';
+                throw ValidationException::withMessages(['conflict' => 'This would double-book: '.implode(' ', array_slice($new, 0, 3)).$more]);
+            }
+
+            return $result;
+        });
+    }
+
+    /**
+     * Every clash among the bookings that hold a unit from today on, read fresh from the database: more stays on a
+     * night than the unit has, the whole-resort package on the same night as any other unit, or a same-day changeover
+     * where one guest is still there when the next arrives. One sentence per clash.
+     *
+     * @return list<string>
+     */
+    public function clashes(int $tenantId): array
+    {
+        $settings = Tenant::findOrFail($tenantId)->settings;
+        $rooms = Room::where('tenant_id', $tenantId)->get()->keyBy('id');
+        $bookings = $this->holding(Booking::where('tenant_id', $tenantId), today()->subDay()->toDateString(), '9999-12-31')
+            ->orderBy('check_in')->orderBy('id')->get()
+            ->each(fn (Booking $b) => $b->setRelation('room', $rooms[$b->room_id] ?? null))
+            ->filter(fn (Booking $b) => $b->room !== null)->values();
+        $day = fn ($date) => CarbonImmutable::parse($date)->format('M j');
+        $who = fn (Booking $b) => "{$b->guest_name} ({$b->reference}, {$b->room->name})";
+        $found = [];
+
+        // Nights: per unit, and the whole-resort package against everything else on the property.
+        $nights = []; // date => list of bookings staying that night
+        foreach ($bookings as $b) {
+            for ($night = CarbonImmutable::parse(max($b->check_in->toDateString(), today()->toDateString())); $night->lt($b->check_out); $night = $night->addDay()) {
+                $nights[$night->toDateString()][] = $b;
+            }
+        }
+        ksort($nights);
+        foreach ($nights as $date => $staying) {
+            foreach (collect($staying)->groupBy('room_id') as $roomId => $same) {
+                if ($same->count() > max(1, $rooms[$roomId]->quantity)) {
+                    $found[] = "{$rooms[$roomId]->name} has {$same->count()} bookings on the night of {$day($date)} but only {$rooms[$roomId]->quantity} available.";
+                }
+            }
+            foreach (collect($staying)->groupBy(fn (Booking $b) => $b->room->property_id) as $together) {
+                $whole = $together->first(fn (Booking $b) => $b->room->whole_property);
+                $other = $whole ? $together->first(fn (Booking $b) => $b->room_id !== $whole->room_id) : null;
+                if ($other) {
+                    $found[] = "{$who($whole)} takes the whole resort on the night of {$day($date)}, when {$who($other)} is also booked.";
+                }
+            }
+        }
+
+        // Hours on a changeover day: one guest leaving after the next one arrives in the same unit.
+        $shares = fn (Booking $a, Booking $b) => $a->room->property_id === $b->room->property_id
+            && ($a->room->whole_property || $b->room->whole_property || ($a->room_id === $b->room_id && $a->room->quantity <= 1));
+        $periods = $bookings->mapWithKeys(fn (Booking $b) => [$b->id => $b->period($settings)]);
+        foreach ($bookings as $leaving) {
+            [, $leaves] = $periods[$leaving->id];
+            foreach ($bookings as $arriving) {
+                [$arrives] = $periods[$arriving->id];
+                if ($leaving->id !== $arriving->id && $arrives->toDateString() === $leaves->toDateString() && $arrives->lt($leaves) && $shares($leaving, $arriving)
+                    && $periods[$leaving->id][0]->lt($arrives)) {
+                    $found[] = "{$who($leaving)} leaves at {$leaves->format('g:i A')} on {$day($leaves)} but {$who($arriving)} arrives at {$arrives->format('g:i A')}.";
+                }
+            }
+        }
+
+        return array_values(array_unique($found));
+    }
+
     /** Bookings overlapping the stay that hold their room: occupying ones and unexpired holds. */
-    private function holding($query, string $checkIn, string $checkOut)
+    public function holding($query, string $checkIn, string $checkOut)
     {
         return $query->whereDate('check_in', '<', $checkOut)->whereDate('check_out', '>', $checkIn)
             ->where(fn ($q) => $q->whereIn('status', Booking::OCCUPYING)

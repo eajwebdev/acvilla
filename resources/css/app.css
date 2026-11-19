@@ -23,6 +23,11 @@
   --color-amber-50:#FFF6E9; --color-amber-100:#FEE9C7; --color-amber-200:#FCD48F; --color-amber-300:#F9B955; --color-amber-400:#F09A26; --color-amber-500:#D97D0B; --color-amber-600:#B45F06; --color-amber-700:#8F4A08; --color-amber-800:#6E3A0A; --color-amber-900:#502B0A;
   --color-rose-50:#FCF1F0; --color-rose-100:#F8DFDD; --color-rose-200:#F0C2BE; --color-rose-300:#E49A94; --color-rose-400:#D4716A; --color-rose-500:#C2453D; --color-rose-600:#A93A33; --color-rose-700:#8F302A; --color-rose-800:#732723; --color-rose-900:#5A1F1C;
   --color-red-50:#FCF1F0; --color-red-100:#F8DFDD; --color-red-200:#F0C2BE; --color-red-500:#C2453D; --color-red-600:#A93A33; --color-red-700:#8F302A; --color-red-800:#732723;
+  /* Text, lines and surfaces of the dashboards and guest site. Use these instead of hex values in class names. */
+  --color-ink:#141C33; --color-ink-soft:#3B404C; --color-ink-muted:#5E6679; --color-ink-faint:#AFB4C1;
+  --color-line:#E6E3DA; --color-line-soft:#EBE8E0; --color-line-strong:#D8D2C4;
+  --color-paper:#FBFAF6; --color-mist:#F6F5F1; --color-sand:#F3F0EA; --color-tint:#EEF3FF;
+  --color-leaf-light:#FFD84D; --color-leaf-ink:#3A2A00; --color-danger:#C2453D;
   --color-navy:#0A2266; --color-pink:#0039D5; --color-gold:#8A4A1E; --color-cream:#FBFAF6; --color-slate:#525A6D; --font-sans:Jost,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; --font-serif:"Cormorant Garamond",ui-serif,Georgia,'Times New Roman',serif; }
 * { box-sizing:border-box; }
 html { scroll-behavior:smooth; -webkit-text-size-adjust:100%; }
@@ -151,6 +156,7 @@ body { margin:0; background:var(--background); color:var(--foreground); font-fam
 :is(.tapp,.tapp-drawer) .table th.text-right { text-align:right; }
 .tapp .table tbody tr.clickable { cursor:pointer; }
 .tapp .table tbody tr.clickable:hover { background:#FAF9F7; }
+.tapp .table tbody tr.clickable:focus-visible { outline:3px solid var(--primary); outline-offset:-3px; background:#FAF9F7; }
 :is(.tapp,.tapp-dialog,.tapp-drawer) .pill:not([class*='border-']) { border-color:var(--line); }
 .tapp-overlay { position:fixed; inset:0; z-index:90; background:rgba(14,22,48,.35); backdrop-filter:blur(4px); }
 .tapp-dialog { position:fixed; left:50%; top:50%; z-index:91; width:min(calc(100vw - 24px),460px); max-height:calc(100dvh - 24px); overflow:auto; transform:translate(-50%,-50%); border-radius:18px; background:#fff; box-shadow:0 30px 90px rgba(14,22,48,.28); }
