@@ -26,6 +26,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -638,7 +639,68 @@ class PublicController extends Controller
     /** Guest pages also get the editable website content (hidden from every other tenant payload). */
     public function quotation(Request $request)
     {
-        return Inertia::render('Public/Quotation', ['tenant' => $this->site($this->siteTenant($request))]);
+        $package = config('quotation.package');
+
+        return Inertia::render('Public/Quotation', ['tenant' => $this->site($this->siteTenant($request)),
+            'package' => ['price' => $package['price'], 'setup_fee' => $package['setup_fee'], 'max_percent' => $this->maxDiscountPercent($package),
+                // Named only on the client's own link; the public pricing page is for any prospect.
+                'client' => $request->query('package') === $package['id'] ? ['name' => $package['client'], 'business' => $package['business']] : null,
+                'document' => $this->quotationDocument(),
+                'discount' => $this->quotationDiscount($request, $package),
+                // Only the platform owner sees the discount controls; customers only ever see the result.
+                'can_discount' => $request->user()?->role === 'SUPERADMIN']]);
+    }
+
+    /**
+     * The owner sets a discount on the quotation page: turn it into a signed link that expires, and open it. The
+     * customer gets that link; changing the percent in it breaks the signature and shows the full price again.
+     */
+    public function quotationDiscountLink(Request $request)
+    {
+        $package = config('quotation.package');
+        $data = $request->validate(['percent' => ['required', 'integer', 'min:0', 'max:'.$this->maxDiscountPercent($package)],
+            'label' => ['nullable', 'string', 'max:60'], 'days' => ['required', 'integer', 'min:1', 'max:365']],
+            ['percent.max' => 'The discount can be up to :max% (the price can\'t go below ₱'.number_format($package['min_price']).').']);
+        if ((int) $data['percent'] === 0) {
+            return redirect()->route('quotation', ['package' => $package['id']]);
+        }
+
+        return redirect(URL::temporarySignedRoute('quotation', now()->addDays((int) $data['days'])->endOfDay(),
+            ['package' => $package['id'], 'percent' => (int) $data['percent'], 'label' => trim($data['label'] ?? '') ?: 'Discount'], absolute: false));
+    }
+
+    /** Number, dates and author of the quotation, with dates written out the way they print. */
+    private function quotationDocument(): array
+    {
+        $document = config('quotation.document');
+        $date = fn (string $day) => CarbonImmutable::parse($day)->format('F j, Y');
+
+        return ['number' => $document['number'], 'issued' => $date($document['issued']), 'valid_until' => $date($document['valid_until']),
+            'prepared_by' => $document['prepared_by'], 'prepared_by_title' => $document['prepared_by_title']];
+    }
+
+    private function maxDiscountPercent(array $package): int
+    {
+        return (int) floor(($package['price'] - $package['min_price']) * 100 / $package['price']);
+    }
+
+    /**
+     * The discount on a quotation link, only when the owner's signed link is intact and not expired. Signatures are
+     * checked on the path and query only, so the link works on whichever address the site is opened from.
+     */
+    private function quotationDiscount(Request $request, array $package): ?array
+    {
+        if ($request->query('package') !== $package['id'] || ! $request->has('percent') || ! $request->hasValidRelativeSignature()) {
+            return null;
+        }
+        $percent = min(max(0, (int) $request->query('percent')), $this->maxDiscountPercent($package));
+        if ($percent <= 0) {
+            return null;
+        }
+
+        return ['percent' => $percent, 'amount' => (int) round($package['price'] * $percent / 100),
+            'label' => Str::limit(trim((string) $request->query('label', '')) ?: 'Discount', 60, ''),
+            'valid_until' => $request->has('expires') ? CarbonImmutable::createFromTimestamp((int) $request->query('expires'), config('app.timezone'))->format('F j, Y') : null];
     }
 
     private function site(?Tenant $tenant): ?Tenant

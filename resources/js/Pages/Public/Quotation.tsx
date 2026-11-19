@@ -1,110 +1,176 @@
-import { Head } from '@inertiajs/react';
-import { Check, CheckCheck, Copy, Download, Minus, Plus } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Head, useForm } from '@inertiajs/react';
+import { CheckCheck, Copy, Download, Percent } from 'lucide-react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import '../../../css/quotation.css';
-import Brand from '../../Components/Brand';
-import GuestShell, { type SiteTenant } from '../../Components/GuestShell';
-import PageSign from '../../Components/PageSign';
+import type { SiteTenant } from '../../Components/GuestShell';
 
-// Monthly PHP prices per property. Update these when EAJ confirms its rate card.
-const BASE_PRICE = 3499;
-// Booking Core plus every add-on comes to exactly 6,000 per property: keep the add-ons at 2,501 in total.
-const ADDONS = [
-  {
-    id: 'pos',
-    name: 'Point of sale',
-    price: 799,
-    description: 'Front desk sales, items, charges and transaction records.',
-  },
-  {
-    id: 'messages',
-    name: 'Guest messaging',
-    price: 299,
-    description: 'Message templates and booking communication tools.',
-  },
-  {
-    id: 'payments',
-    name: 'Online payment integration',
-    price: 849,
-    description: 'Checkout and payment review flow; live PayMongo connection requires provider setup.',
-  },
-  {
-    id: 'face',
-    name: 'Face recognition attendance',
-    price: 554,
-    description:
-      'Staff attendance records and manager review are ready. Camera matching requires integration and privacy review.',
-  },
-] as const;
-const INCLUDED = [
-  'Landing page',
-  'Booking website',
-  'Customer accounts',
-  'Property and room records',
-  'Availability calendar',
-  'Manual reservations',
-  'Guest and payment records',
-  'Advanced reports & insights',
-  'Staff access',
-  'Cloud hosting, SSL and backups',
-];
-const CORE_MODULES = [
-  { name: 'Cleaning & staff tasks', description: 'Turnover assignments, progress and task photos.' },
-  { name: 'Promos & seasonal rates', description: 'Date-based rates, discount codes and offers.' },
-];
-// Agreed fixed price for one client, opened with /quotation?package=ac-villa. The public prices above are unchanged.
-const CLIENT_PACKAGE = {
-  id: 'ac-villa',
-  client: 'AC Villa & Private Resort',
-  price: 6000,
-  addons: ['pos', 'messages'],
-} as const;
-type AddonId = (typeof ADDONS)[number]['id'];
-const addonIds = new Set<string>(ADDONS.map(addon => addon.id));
+/*
+ * EAJ's quotation for the all-inclusive package, laid out as three A4 sheets in EAJ's own brand (navy and crimson)
+ * so it prints or saves to PDF exactly as it looks. Prices, the client, the quotation number and dates come from
+ * config/quotation.php; nothing here changes what anyone is charged.
+ */
+
+type PackageDiscount = { percent: number; amount: number; label: string; valid_until: string | null };
+type QuotationDocument = {
+  number: string;
+  issued: string;
+  valid_until: string;
+  prepared_by: string;
+  prepared_by_title: string;
+};
+type PackageOffer = {
+  price: number;
+  setup_fee: number;
+  max_percent: number;
+  discount: PackageDiscount | null;
+  client: { name: string; business: string } | null;
+  document?: QuotationDocument;
+  can_discount?: boolean;
+};
+
+const FALLBACK_OFFER: PackageOffer = { price: 6000, setup_fee: 12000, max_percent: 0, discount: null, client: null };
+const OFFER_DAYS = [7, 14, 30, 60] as const;
+const SHEETS = 3;
+
 const peso = (amount: number) => `₱${amount.toLocaleString('en-PH')}`;
-const clampCount = (value: string | null) => Math.max(1, Math.min(20, Number.parseInt(value || '', 10) || 1));
 
-function initialSelection() {
-  if (typeof window === 'undefined') return { properties: 1, addons: [] as AddonId[] };
-  const params = new URLSearchParams(window.location.search);
-  const addons = (params.get('addons') || '').split(',').filter((id): id is AddonId => addonIds.has(id));
-  if (params.get('face') === '1' && !addons.includes('face')) addons.push('face');
-  return { properties: clampCount(params.get('properties')), addons };
-}
+const BENEFITS = [
+  {
+    title: 'Prevent double bookings',
+    body: 'Every reservation, including the whole-resort package, goes through one availability check. A taken slot refuses a second booking, even if two people try at once.',
+  },
+  {
+    title: 'Take reservations online',
+    body: 'Guests see open dates on your website and send a request. They upload the downpayment receipt and you confirm it in one place, without chasing chats.',
+  },
+  {
+    title: 'Run the front desk and your team',
+    body: 'Sell food, drinks and extras and charge them to the booking. Staff get their own login for cleaning tasks and attendance.',
+  },
+  {
+    title: 'Know where your money is',
+    body: 'See what guests owe, what you received and what you spent, with occupancy and income reports ready to open.',
+  },
+];
 
-const openedPackage = () =>
-  typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('package') === CLIENT_PACKAGE.id;
+const MODULE_GROUPS: { title: string; items: string[] }[] = [
+  {
+    title: 'Website and online booking',
+    items: [
+      'Your own resort website with photos, rates and details',
+      'Live availability for every room, house and the function hall',
+      'Reservation requests for one or several facilities at once',
+      'Guest accounts, with “My bookings” to follow each request',
+    ],
+  },
+  {
+    title: 'Reservations and calendar',
+    items: [
+      'Calendar of every unit by date, also on a phone',
+      'Double-booking protection for each unit and the whole resort',
+      'Holds that expire on their own, and walk-in bookings',
+      'Stay extensions and date blocks, rechecked against availability',
+    ],
+  },
+  {
+    title: 'Payments',
+    items: [
+      'Downpayment receipts uploaded by guests, reviewed by you',
+      'Every payment and balance recorded per booking',
+      'Online checkout through your own PayMongo account',
+    ],
+  },
+  {
+    title: 'Pricing and promos',
+    items: [
+      'Weekday and weekend rates per unit',
+      'Holiday and peak-season rates with minimum stays',
+      'Promo codes, add-ons and extra-guest fees',
+    ],
+  },
+  {
+    title: 'Front desk point of sale',
+    items: [
+      'Items and stock for food, drinks and extras',
+      'Charges added to a booking and settled at check-out',
+      'Daily sales records',
+    ],
+  },
+  {
+    title: 'Guest messages',
+    items: [
+      'Automatic confirmation, payment and reminder emails',
+      'Your own wording for every message',
+      'Failed emails retried automatically',
+    ],
+  },
+  {
+    title: 'Staff and operations',
+    items: [
+      'Cleaning tasks assigned to staff, with progress and photos',
+      'Staff attendance with manager review',
+      'Each staff member sees only their own workspace',
+    ],
+  },
+  {
+    title: 'Reports and records',
+    items: [
+      'Today’s arrivals, requests and money at a glance',
+      'Occupancy, income, booking source and expense reports',
+      'Customer history, reviews and a log of important actions',
+    ],
+  },
+];
 
-export default function Quotation({ tenant = null }: { tenant?: SiteTenant }) {
-  const [isPackage] = useState(openedPackage);
-  const [initial] = useState(initialSelection);
-  const [properties, setProperties] = useState(initial.properties);
-  const [selected, setSelected] = useState<AddonId[]>(initial.addons);
+const NOT_INCLUDED = [
+  'Fees charged by payment providers (PayMongo, GCash, banks) on each payment, paid directly to them with no markup from EAJ.',
+  'Devices, receipt printers, cameras and internet connection.',
+  'SMS or Viber messaging, if wanted later.',
+  'Premium domain names other than a standard .com, at the price difference only.',
+];
+
+const GROWTH: { request: string; covers: string; cost: string; tone?: 'accent' }[] = [
+  {
+    request: 'Module customization',
+    covers: 'Adjustments to the features, workflows and layouts of any module in this quotation.',
+    cost: 'No extra cost',
+    tone: 'accent',
+  },
+  {
+    request: 'Minor feature additions',
+    covers:
+      'Small features outside this quotation, up to two development hours per month. Unused hours do not carry over.',
+    cost: 'Included allowance',
+    tone: 'accent',
+  },
+  {
+    request: 'Major new modules',
+    covers:
+      'Large modules that need significant development, priced separately and approved by you before work begins.',
+    cost: 'Separate quotation',
+  },
+];
+
+const STEPS = [
+  { title: 'Sign and pay', body: 'Sign this quotation and pay the one-time setup fee.' },
+  { title: 'Set up', body: 'We set up your domain, hosting, rooms, rates, emails and staff accounts.' },
+  { title: 'Train', body: 'We walk you and your staff through the system, on site or online.' },
+  { title: 'Go live', body: 'Guests book on your website and your team runs the resort in the system.' },
+];
+
+export default function Quotation({
+  package: offer = FALLBACK_OFFER,
+}: {
+  /** Sent by the server for the site menu; the quotation is a standalone EAJ document and doesn't use it. */
+  tenant?: SiteTenant;
+  package?: PackageOffer;
+}) {
   const [copied, setCopied] = useState(false);
-  const chosenAddons = ADDONS.filter(addon => selected.includes(addon.id));
-  const perProperty = BASE_PRICE + chosenAddons.reduce((sum, addon) => sum + addon.price, 0);
-  const total = perProperty * properties;
-  const issued = new Intl.DateTimeFormat('en-PH', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'Asia/Manila',
-  }).format(new Date());
-
-  useEffect(() => {
-    if (isPackage) return;
-    const urlAddons = ADDONS.filter(addon => selected.includes(addon.id));
-    const url = new URL(window.location.href);
-    ['mode', 'billing', 'face', 'website'].forEach(key => url.searchParams.delete(key));
-    url.searchParams.set('properties', String(properties));
-    if (urlAddons.length) url.searchParams.set('addons', urlAddons.map(addon => addon.id).join(','));
-    else url.searchParams.delete('addons');
-    window.history.replaceState(window.history.state, '', url);
-  }, [isPackage, properties, selected]);
-
-  function toggleAddon(id: AddonId) {
-    setSelected(current => (current.includes(id) ? current.filter(item => item !== id) : [...current, id]));
-  }
+  const { discount, client, document: doc } = offer;
+  const monthly = offer.price - (discount?.amount ?? 0);
+  const firstYear = offer.setup_fee + monthly * 12;
+  const perDay = Math.round(monthly / 30);
+  const recipient = client ? client.name : 'Prospective client';
 
   async function copyLink() {
     try {
@@ -116,459 +182,491 @@ export default function Quotation({ tenant = null }: { tenant?: SiteTenant }) {
     }
   }
 
-  if (isPackage) return <PackageQuotation tenant={tenant} issued={issued} copied={copied} onCopy={copyLink} />;
+  const terms = [
+    'All prices are in Philippine pesos.',
+    `The ${peso(offer.setup_fee)} setup fee is paid once, in full, on signing. It covers setup, the domain’s first year, training and launch. If EAJ does not launch your system, it is refunded in full.`,
+    `The ${peso(monthly)} monthly fee starts at go-live and covers hosting, daily backups, yearly domain renewal, guest emails, support, maintenance and security updates.`,
+    'The monthly price is fixed for the first 12 months. Later changes require 30 days’ written notice.',
+    'The domain is registered in your name. Your data is yours: request a full export at any time, at no cost.',
+    'Support by chat, call or message, Monday to Saturday, 8 AM–6 PM, with a same-day response if the website or booking is down.',
+    'Either party may cancel with 30 days’ written notice.',
+    'Invoices are due within 7 days. Service is only paused, never deleted, after 30 days unpaid, with notice first.',
+    ...(discount
+      ? [
+          `${discount.label}: ${discount.percent}% (${peso(discount.amount)}) off the monthly price${discount.valid_until ? `, when accepted by ${discount.valid_until}` : ''}.`,
+        ]
+      : []),
+    ...(doc ? [`This quotation is valid until ${doc.valid_until}.`] : []),
+  ];
 
   return (
-    <GuestShell tenant={tenant}>
-      <Head title="Quotation" />
-      <div className="eaj-quote print-area">
-        <div className="eq-topline" />
-        <header className="eq-masthead">
-          <Brand href="/platform" />
-          <span className="eq-document-label">COMMERCIAL QUOTATION</span>
-        </header>
+    <div className="eq print-area">
+      <Head title={client && doc ? `Quotation ${doc.number} · ${client.business}` : 'Pricing · EAJ Web Development'}>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap"
+        />
+      </Head>
 
-        <main className="eq-paper">
-          <div className="eq-intro">
-            <div>
-              <PageSign eyebrow="EAJ booking platform" title="Software for the Work *Behind Every Stay*" />
-              <p className="eq-intro-copy">
-                Every plan starts with Booking Core: your landing page, booking website and customer accounts. Add the
-                modules you need; the amount updates as you go.
-              </p>
-            </div>
-            <div className="eq-intro-side">
-              <span>QUOTATION</span>
-              <strong>EAJ / 2026</strong>
-              <small>Prepared for review</small>
-            </div>
-          </div>
+      <div className="eq-toolbar no-print">
+        <div className="eq-toolbar-title">
+          <img src="/images/eaj/eaj-mark-light.png" alt="" width={400} height={242} />
+          <span>
+            <strong>{doc && client ? `Quotation ${doc.number}` : 'EAJ pricing'}</strong>
+            <small>{client ? client.business : 'All-inclusive package'}</small>
+          </span>
+        </div>
+        <div className="eq-toolbar-actions">
+          <button type="button" className="eq-btn eq-btn-ghost" onClick={copyLink}>
+            {copied ? <CheckCheck size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
+            {copied ? 'Link copied' : 'Copy link'}
+          </button>
+          <button type="button" className="eq-btn eq-btn-primary" onClick={() => window.print()}>
+            <Download size={16} aria-hidden="true" /> Save as PDF
+          </button>
+        </div>
+      </div>
 
-          <dl className="eq-meta">
-            <div>
-              <dt>PREPARED FOR</dt>
-              <dd>Prospective client</dd>
-            </div>
-            <div>
-              <dt>PREPARED BY</dt>
-              <dd>EAJ Web Development Services</dd>
-            </div>
-            <div>
-              <dt>ISSUED</dt>
-              <dd>{issued}</dd>
-            </div>
-            <div>
-              <dt>BILLING</dt>
-              <dd>Monthly · per property</dd>
-            </div>
-          </dl>
+      {offer.can_discount && offer.max_percent > 0 && <DiscountPanel offer={offer} />}
 
-          <div className="eq-layout">
-            <div className="eq-content">
-              <section className="eq-section" aria-labelledby="base-title">
-                <SectionHeading number="01" label="Foundation" title="Booking Core" id="base-title" />
-                <div className="eq-base">
+      <main className="eq-sheets">
+        {/* ── Page 1: who, what, and what it costs ── */}
+        <Sheet page={1} number={doc?.number}>
+          <header className="eq-head">
+            <img
+              className="eq-logo"
+              src="/images/eaj/eaj-logo.png"
+              alt="EAJ Web Development Services"
+              width={880}
+              height={612}
+            />
+            <div className="eq-head-meta">
+              <h1>QUOTATION</h1>
+              <dl>
+                {doc && client && (
                   <div>
-                    <p>
-                      Your landing page, booking website and customer accounts, with one place for the daily reservation
-                      workflow, from room availability to guest records and reporting.
-                    </p>
-                    <ul>
-                      {INCLUDED.map(item => (
-                        <li key={item}>
-                          <Check size={14} />
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                    <div className="eq-core-modules">
-                      {CORE_MODULES.map(module => (
-                        <div className="eq-core-module" key={module.name}>
-                          <Check size={15} />
-                          <div>
-                            <strong>{module.name}</strong>
-                            <small>{module.description}</small>
-                            <span>Included in Booking Core</span>
-                          </div>
-                        </div>
-                      ))}
+                    <dt>Quotation no.</dt>
+                    <dd>{doc.number}</dd>
+                  </div>
+                )}
+                {doc && (
+                  <>
+                    <div>
+                      <dt>Date</dt>
+                      <dd>{doc.issued}</dd>
                     </div>
-                  </div>
-                  <p className="eq-base-price">
-                    <strong>{peso(BASE_PRICE)}</strong>
-                    <span>/ month / property</span>
-                  </p>
-                </div>
-              </section>
-
-              <section className="eq-section" aria-labelledby="modules-title">
-                <SectionHeading
-                  number="02"
-                  label="Optional modules"
-                  title="Add only what you need"
-                  id="modules-title"
-                />
-                <p className="eq-section-copy">
-                  Paid modules are priced per property each month. Cleaning and promotions are already included in
-                  Booking Core.
-                </p>
-                <div className="eq-modules">
-                  {ADDONS.map(addon => (
-                    <button
-                      key={addon.id}
-                      type="button"
-                      role="switch"
-                      aria-checked={selected.includes(addon.id)}
-                      onClick={() => toggleAddon(addon.id)}
-                      className="eq-module"
-                    >
-                      <span className="eq-toggle" aria-hidden="true" />
-                      <span className="eq-module-copy">
-                        <strong>{addon.name}</strong>
-                        <small>{addon.description}</small>
-                      </span>
-                      <b>
-                        + {peso(addon.price)}
-                        <small>/ mo</small>
-                      </b>
-                    </button>
-                  ))}
-                </div>
-                <p className="eq-fine">
-                  PayMongo payment links can be used for manual reservations. PayMongo transaction and message delivery
-                  fees are separate. Face recognition attendance requires supported cameras, staff consent and an agreed
-                  privacy process.
-                </p>
-              </section>
-
-              <section className="eq-section eq-terms" aria-labelledby="terms-title">
-                <SectionHeading number="03" label="Commercial notes" title="Terms at a glance" id="terms-title" />
-                <div className="eq-terms-grid">
-                  <p>
-                    <strong>Monthly billing.</strong> The base subscription and selected paid modules are billed in
-                    advance per property.
-                  </p>
-                  <p>
-                    <strong>Included services.</strong> Hosting, SSL, routine updates and backups are part of Booking
-                    Core.
-                  </p>
-                  <p>
-                    <strong>External charges.</strong> Payment processing, message delivery and domain registration are
-                    separate.
-                  </p>
-                  <p>
-                    <strong>Final agreement.</strong> EAJ confirms scope, launch timing and final pricing before
-                    activation.
-                  </p>
-                </div>
-              </section>
+                    <div>
+                      <dt>Valid until</dt>
+                      <dd>{doc.valid_until}</dd>
+                    </div>
+                  </>
+                )}
+              </dl>
             </div>
+          </header>
 
-            <aside className="eq-summary" aria-labelledby="summary-title">
-              <div className="eq-summary-head">
-                <span>YOUR SELECTION</span>
-                <h2 id="summary-title">Monthly estimate</h2>
-                <p>All amounts in Philippine pesos.</p>
-              </div>
-              <div className="eq-summary-body">
-                <div className="eq-property-row">
-                  <div>
-                    <strong>Properties</strong>
-                    <small>Price applies to each property</small>
-                  </div>
-                  <div className="eq-stepper no-print">
-                    <button
-                      type="button"
-                      aria-label="Remove one property"
-                      disabled={properties === 1}
-                      onClick={() => setProperties(value => Math.max(1, value - 1))}
-                    >
-                      <Minus size={15} />
-                    </button>
-                    <input
-                      aria-label="Number of properties"
-                      type="number"
-                      min="1"
-                      max="20"
-                      value={properties}
-                      onChange={event => setProperties(clampCount(event.target.value))}
-                    />
-                    <button
-                      type="button"
-                      aria-label="Add one property"
-                      disabled={properties === 20}
-                      onClick={() => setProperties(value => Math.min(20, value + 1))}
-                    >
-                      <Plus size={15} />
-                    </button>
-                  </div>
-                  <span className="eq-print-count">{properties}</span>
-                </div>
-                <div className="eq-lines">
-                  <SummaryRow name="Booking Core" amount={BASE_PRICE} properties={properties} />
-                  {chosenAddons.map(addon => (
-                    <SummaryRow key={addon.id} name={addon.name} amount={addon.price} properties={properties} />
-                  ))}
-                </div>
-                <div className="eq-total">
-                  <span>ESTIMATED MONTHLY TOTAL</span>
-                  <strong>{peso(total)}</strong>
-                  <small>{peso(perProperty)} per property · billed monthly</small>
-                </div>
-                <p className="eq-estimate-note">
-                  Add-on prices are indicative. EAJ will confirm the final offer with you.
-                </p>
-                <div className="eq-actions no-print">
-                  <button type="button" className="eq-primary" onClick={() => window.print()}>
-                    <Download size={16} /> Print / Save PDF
-                  </button>
-                  <button type="button" className="eq-secondary" onClick={copyLink}>
-                    {copied ? <CheckCheck size={16} /> : <Copy size={16} />}{' '}
-                    {copied ? 'Link copied' : 'Copy selection link'}
-                  </button>
-                </div>
-              </div>
-            </aside>
-          </div>
-
-          <div className="eq-accept">
+          <section className="eq-parties" aria-label="Parties">
             <div>
-              <p className="eq-kicker">ACCEPTANCE</p>
-              <h2>Ready to proceed?</h2>
+              <p className="eq-eyebrow">Prepared for</p>
+              <p className="eq-party-name">{recipient}</p>
+              <p className="eq-party-role">{client ? client.business : 'Resort or property owner'}</p>
+            </div>
+            <div>
+              <p className="eq-eyebrow">Prepared by</p>
+              <p className="eq-party-name">{doc?.prepared_by ?? 'EAJ Web Development Services'}</p>
+              <p className="eq-party-role">{doc?.prepared_by_title ?? 'Booking systems for resorts and stays'}</p>
+            </div>
+          </section>
+
+          <section className="eq-hero" aria-labelledby="eq-package-title">
+            <div className="eq-hero-copy">
+              <p className="eq-eyebrow eq-eyebrow-light">All-inclusive package</p>
+              <h2 id="eq-package-title">Resort Booking and Management System</h2>
               <p>
-                Confirm this selection with EAJ before signing. We will provide the final service scope and launch
-                schedule.
+                One system to run the resort, from the first guest inquiry to the payment, the cleaned room and the
+                monthly report.
               </p>
             </div>
-            <div className="eq-signatures">
+            <div className="eq-hero-price">
+              {discount && <s className="eq-hero-was">{peso(offer.price)}</s>}
+              <p>
+                <strong>{peso(monthly)}</strong>
+                <span>/ month</span>
+              </p>
+              {discount && (
+                <p className="eq-hero-line">
+                  <em>
+                    {discount.label} · {discount.percent}% off
+                  </em>
+                </p>
+              )}
+              <p className="eq-hero-line">Every feature included. No commission per booking.</p>
+              <p className="eq-hero-line">
+                <em>{peso(offer.setup_fee)}</em> one-time setup, with domain and hosting.
+              </p>
+            </div>
+          </section>
+
+          <section className="eq-block" aria-labelledby="eq-benefits-title">
+            <h2 id="eq-benefits-title" className="eq-h2">
+              What this changes for your business
+            </h2>
+            <div className="eq-benefits">
+              {BENEFITS.map(benefit => (
+                <article key={benefit.title}>
+                  <h3>{benefit.title}</h3>
+                  <p>{benefit.body}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="eq-block" aria-labelledby="eq-cost-title">
+            <h2 id="eq-cost-title" className="eq-h2">
+              What it costs
+            </h2>
+            <div className="eq-stats">
               <div>
-                <span>EAJ Web Development Services</span>
-                <small>Authorized representative / Date</small>
+                <strong>{peso(perDay)}</strong>
+                <span>about what the monthly package costs per day</span>
               </div>
               <div>
-                <span>Client representative</span>
-                <small>Signature / Date</small>
+                <strong>Everything</strong>
+                <span>every feature on page 2, nothing to unlock later</span>
+              </div>
+              <div>
+                <strong>₱0</strong>
+                <span>commission or fee per booking</span>
               </div>
             </div>
-          </div>
-          <footer className="eq-footer">
-            <span>EAJ WEB DEVELOPMENT SERVICES</span>
-            <span>Indicative quotation · Subject to final agreement</span>
-          </footer>
-        </main>
-      </div>
-    </GuestShell>
+            <table className="eq-table">
+              <thead>
+                <tr>
+                  <th scope="col">Item</th>
+                  <th scope="col">Details</th>
+                  <th scope="col">Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                <CostRow item="One-time setup" details="Setup, first-year domain, training and launch support">
+                  {peso(offer.setup_fee)} one time
+                </CostRow>
+                <CostRow item="System package" details="Every module on page 2, with hosting and daily backups">
+                  {peso(offer.price)} / month
+                </CostRow>
+                {discount && (
+                  <CostRow
+                    item={discount.label}
+                    details={`${discount.percent}% off the monthly price${discount.valid_until ? `, accepted by ${discount.valid_until}` : ''}`}
+                    tone="accent"
+                  >
+                    −{peso(discount.amount)} / month
+                  </CostRow>
+                )}
+                <CostRow
+                  item="Domain (.com)"
+                  details="In your name. First year in the setup fee, renewed yearly in the monthly fee"
+                  tone="accent"
+                >
+                  Included
+                </CostRow>
+                <CostRow
+                  item="Emails, support and updates"
+                  details="Guest emails, help when you need it, fixes and security updates"
+                  tone="accent"
+                >
+                  Included
+                </CostRow>
+              </tbody>
+            </table>
+          </section>
+        </Sheet>
+
+        {/* ── Page 2: everything in the package, and what isn't ── */}
+        <Sheet page={2} number={doc?.number} recipient={recipient}>
+          <section aria-labelledby="eq-modules-title">
+            <h2 id="eq-modules-title" className="eq-h2">
+              Everything included in your package
+            </h2>
+            <p className="eq-lead">
+              Every module below comes with the monthly price, and all of them work on a phone as well as a computer.
+            </p>
+            <div className="eq-modules">
+              {MODULE_GROUPS.map(group => (
+                <div key={group.title}>
+                  <h3>{group.title}</h3>
+                  <ul className="eq-bullets">
+                    {group.items.map(item => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="eq-block eq-excluded" aria-labelledby="eq-excluded-title">
+            <h2 id="eq-excluded-title" className="eq-h3">
+              Not included, so there are no surprises
+            </h2>
+            <ul>
+              {NOT_INCLUDED.map(item => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </section>
+        </Sheet>
+
+        {/* ── Page 3: growth, getting started, payments, terms, signatures ── */}
+        <Sheet page={3} number={doc?.number} recipient={recipient}>
+          <section aria-labelledby="eq-growth-title">
+            <h2 id="eq-growth-title" className="eq-h2">
+              The system grows with your business
+            </h2>
+            <p className="eq-lead">
+              Your resort will change, and your system should change with it. Customizing what you already have costs
+              nothing extra.
+            </p>
+            <table className="eq-table eq-table-growth">
+              <thead>
+                <tr>
+                  <th scope="col">Request</th>
+                  <th scope="col">What it covers</th>
+                  <th scope="col">Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                {GROWTH.map(row => (
+                  <CostRow key={row.request} item={row.request} details={row.covers} tone={row.tone}>
+                    {row.cost}
+                  </CostRow>
+                ))}
+              </tbody>
+            </table>
+          </section>
+
+          <section className="eq-block" aria-labelledby="eq-start-title">
+            <h2 id="eq-start-title" className="eq-h2">
+              How we get started
+            </h2>
+            <ol className="eq-steps">
+              {STEPS.map((step, i) => (
+                <li key={step.title}>
+                  <span className="eq-step-no">{i + 1}</span>
+                  <h3>{step.title}</h3>
+                  <p>{step.body}</p>
+                </li>
+              ))}
+            </ol>
+            <dl className="eq-schedule">
+              <div>
+                <dt>On signing</dt>
+                <dd>{peso(offer.setup_fee)}</dd>
+              </div>
+              <div>
+                <dt>At go-live (first month)</dt>
+                <dd>{peso(monthly)}</dd>
+              </div>
+              <div>
+                <dt>Each month after</dt>
+                <dd>{peso(monthly)}</dd>
+              </div>
+              <div className="eq-schedule-total">
+                <dt>First year in total</dt>
+                <dd>{peso(firstYear)}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section className="eq-block" aria-labelledby="eq-terms-title">
+            <h2 id="eq-terms-title" className="eq-h2">
+              Terms
+            </h2>
+            <ul className="eq-terms">
+              {terms.map(term => (
+                <li key={term}>{term}</li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="eq-block eq-accept" aria-labelledby="eq-accept-title">
+            <h2 id="eq-accept-title" className="eq-h2">
+              Acceptance
+            </h2>
+            <p className="eq-lead">
+              By signing below, the client accepts this quotation and the package described in it.
+            </p>
+            <div className="eq-signatures">
+              <div>
+                <strong>{recipient}</strong>
+                <span>{client ? `${client.business} · Signature and date` : 'Client · Signature and date'}</span>
+              </div>
+              <div>
+                <strong>{doc?.prepared_by ?? 'EAJ Web Development Services'}</strong>
+                <span>Lead Developer · Signature and date</span>
+              </div>
+            </div>
+          </section>
+        </Sheet>
+      </main>
+    </div>
   );
 }
 
-/** The agreed package: one fixed price, nothing to choose, so the total cannot change. */
-function PackageQuotation({
-  tenant,
-  issued,
-  copied,
-  onCopy,
+/** One A4 page: pages after the first get the small mark and who it's for; every page gets the footer. */
+function Sheet({
+  page,
+  number,
+  recipient,
+  children,
 }: {
-  tenant: SiteTenant;
-  issued: string;
-  copied: boolean;
-  onCopy: () => void;
+  page: number;
+  number?: string;
+  recipient?: string;
+  children: ReactNode;
 }) {
-  const modules = ADDONS.filter(addon => (CLIENT_PACKAGE.addons as readonly string[]).includes(addon.id));
   return (
-    <GuestShell tenant={tenant}>
-      <Head title={`Quotation | ${CLIENT_PACKAGE.client}`} />
-      <div className="eaj-quote print-area">
-        <div className="eq-topline" />
-        <header className="eq-masthead">
-          <Brand href="/platform" />
-          <span className="eq-document-label">COMMERCIAL QUOTATION</span>
+    <article className="eq-sheet" aria-label={`Page ${page} of ${SHEETS}`}>
+      {page > 1 && (
+        <header className="eq-sheet-head">
+          <img src="/images/eaj/eaj-logo.png" alt="EAJ Web Development Services" width={880} height={612} />
+          {recipient && <span>Prepared for {recipient}</span>}
         </header>
-
-        <main className="eq-paper">
-          <div className="eq-intro">
-            <div>
-              <PageSign eyebrow="Your quotation" title="Your AC Villa *Package*" />
-              <p className="eq-intro-copy">
-                One fixed monthly price for your landing page, booking website, customer accounts and the tools you run
-                the resort with.
-              </p>
-            </div>
-            <div className="eq-intro-side">
-              <span>QUOTATION</span>
-              <strong>EAJ / 2026</strong>
-              <small>Fixed package</small>
-            </div>
-          </div>
-
-          <dl className="eq-meta">
-            <div>
-              <dt>PREPARED FOR</dt>
-              <dd>{CLIENT_PACKAGE.client}</dd>
-            </div>
-            <div>
-              <dt>PREPARED BY</dt>
-              <dd>EAJ Web Development Services</dd>
-            </div>
-            <div>
-              <dt>ISSUED</dt>
-              <dd>{issued}</dd>
-            </div>
-            <div>
-              <dt>BILLING</dt>
-              <dd>Monthly · one property</dd>
-            </div>
-          </dl>
-
-          <div className="eq-layout">
-            <div className="eq-content">
-              <section className="eq-section" aria-labelledby="base-title">
-                <SectionHeading number="01" label="Foundation" title="Booking Core" id="base-title" />
-                <div className="eq-base">
-                  <div>
-                    <p>
-                      One place for the daily reservation workflow, from room availability to guest records and
-                      reporting.
-                    </p>
-                    <ul>
-                      {INCLUDED.map(item => (
-                        <li key={item}>
-                          <Check size={14} />
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                    <div className="eq-core-modules">
-                      {CORE_MODULES.map(module => (
-                        <div className="eq-core-module" key={module.name}>
-                          <Check size={15} />
-                          <div>
-                            <strong>{module.name}</strong>
-                            <small>{module.description}</small>
-                            <span>Included in Booking Core</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              <section className="eq-section" aria-labelledby="modules-title">
-                <SectionHeading number="02" label="Modules" title="In your package" id="modules-title" />
-                <div className="eq-modules">
-                  {modules.map(addon => (
-                    <div key={addon.id} className="eq-module eq-module-fixed">
-                      <Check size={17} className="eq-fixed-check" />
-                      <span className="eq-module-copy">
-                        <strong>{addon.name}</strong>
-                        <small>{addon.description}</small>
-                      </span>
-                      <b>Included</b>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              <section className="eq-section eq-terms" aria-labelledby="terms-title">
-                <SectionHeading number="03" label="Commercial notes" title="Terms at a glance" id="terms-title" />
-                <div className="eq-terms-grid">
-                  <p>
-                    <strong>Monthly billing.</strong> The package is billed monthly in advance for one property.
-                  </p>
-                  <p>
-                    <strong>Included services.</strong> Hosting, SSL, routine updates and backups are part of Booking
-                    Core.
-                  </p>
-                  <p>
-                    <strong>External charges.</strong> Message delivery and domain registration are separate.
-                  </p>
-                  <p>
-                    <strong>Before activation.</strong> EAJ confirms the service scope and launch timing.
-                  </p>
-                </div>
-              </section>
-            </div>
-
-            <aside className="eq-summary" aria-labelledby="summary-title">
-              <div className="eq-summary-head">
-                <span>YOUR PACKAGE</span>
-                <h2 id="summary-title">Monthly total</h2>
-                <p>All amounts in Philippine pesos.</p>
-              </div>
-              <div className="eq-summary-body">
-                <div className="eq-lines !mt-0 !border-t-0 !pt-0">
-                  {['Booking Core', ...modules.map(addon => addon.name)].map(item => (
-                    <div key={item} className="eq-line">
-                      <span>{item}</span>
-                      <strong>Included</strong>
-                    </div>
-                  ))}
-                </div>
-                <div className="eq-total">
-                  <span>FIXED MONTHLY TOTAL</span>
-                  <strong>{peso(CLIENT_PACKAGE.price)}</strong>
-                  <small>One property · billed monthly</small>
-                </div>
-                <div className="eq-actions no-print">
-                  <button type="button" className="eq-primary" onClick={() => window.print()}>
-                    <Download size={16} /> Print / Save PDF
-                  </button>
-                  <button type="button" className="eq-secondary" onClick={onCopy}>
-                    {copied ? <CheckCheck size={16} /> : <Copy size={16} />}{' '}
-                    {copied ? 'Link copied' : 'Copy quotation link'}
-                  </button>
-                </div>
-              </div>
-            </aside>
-          </div>
-
-          <div className="eq-accept">
-            <div>
-              <p className="eq-kicker">ACCEPTANCE</p>
-              <h2>Ready to proceed?</h2>
-              <p>Sign below to accept this package. We will confirm the service scope and launch schedule.</p>
-            </div>
-            <div className="eq-signatures">
-              <div>
-                <span>EAJ Web Development Services</span>
-                <small>Authorized representative / Date</small>
-              </div>
-              <div>
-                <span>{CLIENT_PACKAGE.client}</span>
-                <small>Signature / Date</small>
-              </div>
-            </div>
-          </div>
-          <footer className="eq-footer">
-            <span>EAJ WEB DEVELOPMENT SERVICES</span>
-            <span>Fixed package · {peso(CLIENT_PACKAGE.price)} per month</span>
-          </footer>
-        </main>
-      </div>
-    </GuestShell>
+      )}
+      <div className="eq-sheet-body">{children}</div>
+      <footer className="eq-sheet-foot">
+        <span>EAJ Web Development Services{number ? ` · Quotation ${number}` : ''}</span>
+        <span>
+          Page {page} of {SHEETS}
+        </span>
+      </footer>
+    </article>
   );
 }
 
-function SectionHeading({ number, label, title, id }: { number: string; label: string; title: string; id: string }) {
+function CostRow({
+  item,
+  details,
+  tone,
+  children,
+}: {
+  item: string;
+  details: string;
+  tone?: 'accent';
+  children: ReactNode;
+}) {
   return (
-    <div className="eq-section-heading">
-      <span>{number}</span>
-      <div>
-        <p>{label}</p>
-        <h2 id={id}>{title}</h2>
-      </div>
-    </div>
+    <tr>
+      <th scope="row">{item}</th>
+      <td>{details}</td>
+      <td className={tone === 'accent' ? 'eq-cost eq-cost-accent' : 'eq-cost'}>{children}</td>
+    </tr>
   );
 }
 
-function SummaryRow({ name, amount, properties }: { name: string; amount: number; properties: number }) {
+/**
+ * The platform owner's discount controls (never printed, never shown to customers). Applying opens a signed link
+ * with the discount on the monthly price; that link is what "Copy link" then copies for the customer.
+ */
+function DiscountPanel({ offer }: { offer: PackageOffer }) {
+  const form = useForm({
+    percent: offer.discount?.percent ?? 0,
+    label: offer.discount?.label ?? 'Discount',
+    days: 14 as number,
+  });
+  const percent = Math.min(Math.max(0, Math.round(Number(form.data.percent) || 0)), offer.max_percent);
+  const amount = Math.round((offer.price * percent) / 100);
+  const quick = [5, 10, 15, 20, 25].filter(p => p <= offer.max_percent);
+
+  function apply(e: FormEvent) {
+    e.preventDefault();
+    form.transform(data => ({ ...data, percent }));
+    form.post('/quotation/discount', { preserveScroll: true });
+  }
+
+  function remove() {
+    form.transform(data => ({ ...data, percent: 0 }));
+    form.post('/quotation/discount', { preserveScroll: true, onSuccess: () => form.setData('percent', 0) });
+  }
+
   return (
-    <div className="eq-line">
-      <span>
-        {name}
-        <small>× {properties}</small>
-      </span>
-      <strong>{peso(amount * properties)}</strong>
-    </div>
+    <form className="eq-owner no-print" onSubmit={apply} aria-labelledby="eq-owner-title">
+      <p id="eq-owner-title" className="eq-owner-title">
+        <Percent size={14} aria-hidden="true" /> Discount <span>Only you see this panel</span>
+      </p>
+      <div className="eq-owner-row">
+        <div className="eq-owner-quick" role="group" aria-label="Quick discount">
+          {quick.map(p => (
+            <button
+              key={p}
+              type="button"
+              aria-pressed={percent === p}
+              className={percent === p ? 'is-active' : ''}
+              onClick={() => form.setData('percent', p)}
+            >
+              {p}%
+            </button>
+          ))}
+        </div>
+        <label className="eq-owner-field eq-owner-percent">
+          <span>Percent off monthly</span>
+          <span className="eq-owner-input">
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={offer.max_percent}
+              step={1}
+              value={form.data.percent}
+              onChange={e => form.setData('percent', e.target.value === '' ? 0 : Number(e.target.value))}
+              aria-describedby="eq-owner-preview"
+            />
+            <b>%</b>
+          </span>
+        </label>
+        <label className="eq-owner-field">
+          <span>Shown as</span>
+          <input maxLength={60} value={form.data.label} onChange={e => form.setData('label', e.target.value)} />
+        </label>
+        <label className="eq-owner-field">
+          <span>Valid for</span>
+          <select value={form.data.days} onChange={e => form.setData('days', Number(e.target.value))}>
+            {OFFER_DAYS.map(d => (
+              <option key={d} value={d}>
+                {d} days
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="eq-owner-row eq-owner-foot">
+        <p id="eq-owner-preview" className="eq-owner-preview" aria-live="polite">
+          {peso(offer.price)} − {peso(amount)} = <strong>{peso(offer.price - amount)}</strong> / month · up to{' '}
+          {offer.max_percent}%
+        </p>
+        <div className="eq-owner-actions">
+          {offer.discount && (
+            <button type="button" className="eq-btn eq-btn-ghost" disabled={form.processing} onClick={remove}>
+              Remove discount
+            </button>
+          )}
+          <button type="submit" className="eq-btn eq-btn-accent" disabled={form.processing}>
+            {form.processing ? 'Applying…' : percent > 0 ? `Apply ${percent}% discount` : 'Show full price'}
+          </button>
+        </div>
+      </div>
+      {Object.values(form.errors)[0] && (
+        <p role="alert" className="eq-owner-error">
+          {Object.values(form.errors)[0]}
+        </p>
+      )}
+      {offer.discount && (
+        <p className="eq-owner-hint">
+          {offer.discount.percent}% off is on this quotation. Use “Copy link” and send that link to the client.
+        </p>
+      )}
+    </form>
   );
 }

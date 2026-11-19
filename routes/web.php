@@ -41,6 +41,7 @@ Route::get('/availability', [PublicController::class, 'availability'])->middlewa
 Route::get('/availability/calendar', [PublicController::class, 'availabilityCalendar'])->middleware('throttle:60,1,availability.calendar')->name('availability.calendar');
 Route::get('/availability/batch', [PublicController::class, 'availabilityBatch'])->middleware('throttle:120,1,availability.batch')->name('availability.batch');
 Route::get('/quotation', [PublicController::class, 'quotation'])->name('quotation');
+Route::post('/quotation/discount', [PublicController::class, 'quotationDiscountLink'])->middleware(['auth', 'role:SUPERADMIN'])->name('quotation.discount');
 Route::get('/quote', [PublicController::class, 'quote'])->middleware('throttle:120,1,quote')->name('quote');
 Route::post('/bookings', [PublicController::class, 'book'])->middleware('throttle:10,1,bookings.store')->name('bookings.store');
 Route::get('/checkout/{reference}', [PublicController::class, 'checkout'])->name('checkout.show');
