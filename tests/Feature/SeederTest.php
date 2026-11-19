@@ -23,12 +23,14 @@ class SeederTest extends TestCase
 
         $this->assertDatabaseCount('subscription_plans', 2);
         $this->assertSame(['ac-villa'], Tenant::pluck('slug')->all());
-        $this->assertDatabaseCount('users', 0);
-        $this->assertEquals(29988, SubscriptionPlan::where('code', 'ANNUAL')->value('billing_price'));
+        $this->assertSame(['administrator', 'guest', 'staff', 'superadmin'], User::orderBy('username')->pluck('username')->all());
+        $this->assertDatabaseMissing('users', ['email' => 'admin@example.com']);
+        $this->assertEquals(54000, SubscriptionPlan::where('code', 'ANNUAL')->value('billing_price'));
+        $this->assertEquals(6000, SubscriptionPlan::where('code', 'MONTHLY')->value('billing_price'));
 
-        SubscriptionPlan::where('code', 'MONTHLY')->update(['billing_price' => 3999]);
+        SubscriptionPlan::where('code', 'MONTHLY')->update(['billing_price' => 5500]);
         $this->seed();
-        $this->assertEquals(3999, SubscriptionPlan::where('code', 'MONTHLY')->value('billing_price'));
+        $this->assertEquals(5500,SubscriptionPlan::where('code', 'MONTHLY')->value('billing_price'));
     }
 
     public function test_local_seed_creates_username_logins_that_can_sign_in(): void
@@ -86,7 +88,7 @@ class SeederTest extends TestCase
         $this->assertTrue($cebu->acceptsBookings());
         $this->assertEquals(1, $island->subscriptions()->firstOrFail()->commitment_months);
         $this->assertEquals(12, $cebu->subscriptions()->firstOrFail()->commitment_months);
-        $this->assertEquals(29988, $cebu->subscriptions()->firstOrFail()->billing_total);
+        $this->assertEquals(54000, $cebu->subscriptions()->firstOrFail()->billing_total);
 
         $admin = User::where('email', 'admin@example.com')->firstOrFail();
         $admin2 = User::where('email', 'admin2@example.com')->firstOrFail();
@@ -117,8 +119,18 @@ class SeederTest extends TestCase
         $this->artisan('db:seed', ['--force' => true])->assertExitCode(0);
 
         $this->assertDatabaseCount('subscription_plans', 2);
-        $this->assertDatabaseCount('users', 0);
+        $this->assertDatabaseCount('users', 4);
+        $this->assertDatabaseMissing('users', ['email' => 'admin@example.com']);
         $this->assertSame(['ac-villa'], Tenant::pluck('slug')->all());
+    }
+
+    public function test_reseeding_keeps_a_password_changed_after_first_login(): void
+    {
+        $this->seed();
+        User::where('username', 'administrator')->sole()->update(['password' => Hash::make('a-new-strong-password')]);
+        $this->seed();
+
+        $this->assertTrue(Hash::check('a-new-strong-password', User::where('username', 'administrator')->sole()->password));
     }
 
     public function test_the_seed_sets_up_the_instapay_qr_once_and_keeps_the_owners_changes(): void

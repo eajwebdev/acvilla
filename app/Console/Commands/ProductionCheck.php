@@ -51,7 +51,7 @@ class ProductionCheck extends Command
             $this->check($pending === [], 'Database is up to date', 'Run php artisan migrate --force ('.count($pending).' pending).');
             $site = Tenant::where('slug', config('platform.site_tenant'))->first();
             $this->check((bool) $site, 'The resort ('.config('platform.site_tenant').') exists', 'Run php artisan db:seed --class=AcVillaSeeder --force.');
-            $this->check($site && User::where('tenant_id', $site->id)->where('role', 'ADMIN')->whereNull('deactivated_at')->exists(), 'An owner account exists', 'Set ACVILLA_ADMIN_EMAIL / ACVILLA_ADMIN_PASSWORD and run the AcVillaSeeder.');
+            $this->check($site && User::where('tenant_id', $site->id)->where('role', 'ADMIN')->whereNull('deactivated_at')->exists(), 'An owner account exists', 'Run php artisan db:seed --class=AcVillaSeeder --force.');
             $demo = User::where('email', 'like', '%@example.com')->whereIn('role', ['ADMIN', 'STAFF', 'SUPERADMIN'])->pluck('email');
             $this->check($demo->isEmpty(), 'No demo staff accounts', 'Remove the demo accounts: '.$demo->implode(', '));
             $weak = User::whereIn('role', ['ADMIN', 'STAFF', 'SUPERADMIN'])->get()->filter(fn (User $u) => collect(self::KNOWN_PASSWORDS)->contains(fn ($p) => Hash::check($p, $u->password)));

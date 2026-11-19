@@ -12,10 +12,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * The live AC Villa Private Resort & Events Place site: the resort, its rooms and halls at the published rates, and the owner's login.
+ * The live AC Villa Private Resort & Events Place site: the resort, its rooms and halls at the published rates, and the sign-ins.
  * Safe to re-run: rates and details are reset to the rate card, but photos the owner uploaded in Admin are kept.
  *
- *   ACVILLA_ADMIN_EMAIL=owner@example.com ACVILLA_ADMIN_PASSWORD=... php artisan db:seed --class=AcVillaSeeder
+ *   php artisan db:seed --class=AcVillaSeeder
  */
 class AcVillaSeeder extends Seeder
 {
@@ -23,7 +23,7 @@ class AcVillaSeeder extends Seeder
     private const RENAMED = ['a-house-1' => 'barkada-room', 'a-house-2' => 'ah-room-1', 'a-house-3' => 'ah-room-2', 'a-house-4' => 'ah-room-3'];
 
     /** Username, password, name, role, and whether the account belongs to the resort. */
-    private const LOCAL_LOGINS = [
+    private const LOGINS = [
         ['superadmin', 'superadmin@123', 'Super Administrator', 'SUPERADMIN', false],
         ['administrator', 'Admin@123', 'Administrator', 'ADMIN', true],
         ['staff', 'staff@123', 'Staff', 'STAFF', true],
@@ -106,17 +106,11 @@ Cancellation terms are agreed with the owner when we call you."]]);
                 'price' => 2000, 'pricing' => 'per_stay', 'max_quantity' => 1, 'room_ids' => [$hall->id], 'active' => true, 'sort_order' => 0,
             ]);
 
-            if (filled(env('ACVILLA_ADMIN_EMAIL')) && filled(env('ACVILLA_ADMIN_PASSWORD'))) {
-                User::updateOrCreate(['email' => env('ACVILLA_ADMIN_EMAIL')], ['name' => 'AC Villa Owner',
-                    'password' => Hash::make(env('ACVILLA_ADMIN_PASSWORD')), 'role' => 'ADMIN', 'tenant_id' => $tenant->id]);
-            }
-
-            // Simple sign-ins for this computer only: these passwords must never reach the live site.
-            if (app()->environment('local')) {
-                foreach (self::LOCAL_LOGINS as [$username, $password, $name, $role, $staff]) {
-                    User::updateOrCreate(['username' => $username], ['name' => $name, 'email' => "{$username}@acvilla.test",
-                        'password' => Hash::make($password), 'role' => $role, 'tenant_id' => $staff ? $tenant->id : null]);
-                }
+            // The same sign-ins on every install, the live server included. firstOrCreate: the password is only set when
+            // the account is first made, so re-seeding never undoes a password changed after the first login.
+            foreach (self::LOGINS as [$username, $password, $name, $role, $staff]) {
+                User::firstOrCreate(['username' => $username], ['name' => $name, 'email' => "{$username}@acvilla.test",
+                    'password' => Hash::make($password), 'role' => $role, 'tenant_id' => $staff ? $tenant->id : null]);
             }
         });
     }

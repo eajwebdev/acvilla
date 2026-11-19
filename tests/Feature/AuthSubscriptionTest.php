@@ -66,12 +66,12 @@ class AuthSubscriptionTest extends TestCase
             'subscription_plan_id' => $annual->id, 'starts_at' => today()->toDateString(),
         ])->assertRedirect();
         $contract = Subscription::where('tenant_id', $tenant->id)->where('subscription_plan_id', $annual->id)->firstOrFail();
-        $this->assertEquals(29988, $contract->billing_total);
+        $this->assertEquals(54000, $contract->billing_total);
         $this->assertEquals(12, $contract->commitment_months);
-        $this->assertEquals(3499, $initial->fresh()->billing_total);
+        $this->assertEquals(6000, $initial->fresh()->billing_total);
 
-        $annual->update(['billing_price' => 25000]);
-        $this->assertEquals(29988, $contract->fresh()->billing_total);
+        $annual->update(['billing_price' => 50000]);
+        $this->assertEquals(54000, $contract->fresh()->billing_total);
         $this->assertDatabaseHas('audit_logs', ['tenant_id' => $tenant->id, 'action' => 'subscription.created']);
     }
 

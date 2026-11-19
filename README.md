@@ -25,9 +25,9 @@ On Windows PowerShell with script execution disabled, use `npm.cmd` and `npx.cmd
 
 The Laravel scheduler must run every minute in deployment (`php artisan schedule:run` via cron or Task Scheduler). See **Operations** below for what it does.
 
-## Local sign-ins
+## Sign-ins
 
-With `APP_ENV=local`, `php artisan db:seed` creates these accounts. They are never created in any other environment, and `php artisan app:production-check` fails if a staff account uses one of these passwords.
+`php artisan db:seed` (or `--class=AcVillaSeeder`) creates these accounts on every install, the live server included. Passwords are only set when an account is first created, so re-seeding keeps passwords changed later. On the live site, change them after the first login: `php artisan app:production-check` fails while a staff account still uses one of these passwords.
 
 | Role | Username | Password |
 | --- | --- | --- |
@@ -61,7 +61,7 @@ The platform quotation is an in-app page at `/quotation` (also reachable by open
 - Tenant-scoped customer profiles with booking history, paid-spend totals, VIP/blocking status and private notes. Philippine mobile numbers are normalized to `+63` format.
 - Verified completed-stay reviews with one review per booking, guest submission, admin moderation, and approved reviews on the public property page.
 - Server-side availability with room quantity, date blocks, temporary holds, same-day turnover, row locking during booking creation, and subscription checks.
-- Monthly plan at ₱3,499 and annual plan at ₱29,988 billed yearly (₱2,499 monthly equivalent, ₱12,000 annual savings). Subscription records snapshot billing values.
+- Monthly plan at ₱6,000 and annual plan at ₱54,000 billed yearly (₱4,500 monthly equivalent, ₱18,000 annual savings). Subscription records snapshot billing values.
 - Local Philippine defaults: PHP currency and Asia/Manila timezone.
 
 The mock provider is a local test flow only and does not charge a card. Manual payments require staff verification. Public imagery currently uses remote placeholder photography; replace it with licensed property photos before launch. The supplied `eaj-primary.png` is used in platform branding. `eaj-watermark.png` was not found in the provided folder or local EAJ assets.

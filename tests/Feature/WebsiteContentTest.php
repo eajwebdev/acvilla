@@ -30,7 +30,7 @@ class WebsiteContentTest extends TestCase
 
     private function user(string $role): User
     {
-        return User::create(['name' => $role, 'email' => strtolower($role).'@acvilla.test', 'password' => 'Password123!', 'role' => $role, 'tenant_id' => $this->tenant->id]);
+        return User::create(['name' => $role, 'email' => strtolower($role).'-content@acvilla.test', 'password' => 'Password123!', 'role' => $role, 'tenant_id' => $this->tenant->id]);
     }
 
     private function payload(array $changes = []): array

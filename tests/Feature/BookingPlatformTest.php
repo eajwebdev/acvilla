@@ -85,9 +85,9 @@ class BookingPlatformTest extends TestCase
         $quote = app(PricingService::class)->quote($room, '2026-10-05', '2026-10-07');
         $this->assertEquals(2000, $quote['subtotal']);
         $this->assertEquals(2200, $quote['total']);
-        $this->assertEquals(41988, 3499 * 12);
-        $this->assertEquals(29988, 2499 * 12);
-        $this->assertEquals(12000, 41988 - 29988);
+        $this->assertEquals(72000, 6000 * 12);
+        $this->assertEquals(54000, 4500 * 12);
+        $this->assertEquals(18000, 72000 - 54000);
     }
 
     public function test_demo_login_is_config_gated(): void
@@ -190,6 +190,6 @@ class BookingPlatformTest extends TestCase
         ])->assertRedirect();
         $this->assertDatabaseHas('subscriptions', ['tenant_id' => $tenant->id,
             'subscription_plan_id' => $plan->id, 'billing_interval' => 'ANNUAL',
-            'commitment_months' => 12, 'effective_price' => 2499, 'billing_total' => 29988]);
+            'commitment_months' => 12, 'effective_price' => 4500, 'billing_total' => 54000]);
     }
 }

@@ -42,7 +42,6 @@ Fill in every `CHANGE_ME`. The important ones:
 | `APP_ENV=production`, `APP_DEBUG=false` | Error pages never show code or passwords |
 | `APP_URL=https://your-domain` | Forces HTTPS for every link, cookie and redirect |
 | `DB_*` | The database from step 1 |
-| `ACVILLA_ADMIN_EMAIL` / `ACVILLA_ADMIN_PASSWORD` | The owner login (strong, unique password) |
 | `GOOGLE_*` | Guest sign-in. In the Google console add `https://your-domain/auth/google/callback` as an *Authorised redirect URI*, and **publish** the OAuth consent screen |
 | `MAIL_*` | Booking emails to guests (Gmail App Password or your host's SMTP) |
 
@@ -55,7 +54,9 @@ php artisan migrate --force
 php artisan db:seed --class=AcVillaSeeder --force
 ```
 
-This creates the resort, its rooms, halls, prices, the InstaPay QR and the owner login. **Do not** run
+This creates the resort, its rooms, halls, prices, the InstaPay QR and the four sign-ins listed in the README
+(`superadmin`, `administrator`, `staff`, `guest`). Sign in and change their passwords right away: until you do,
+`php artisan app:production-check` fails. Re-running the seeder never resets a changed password. **Do not** run
 `DemoSeeder` or `ConflictTestSeeder` on the live site; they are for testing only.
 
 ## 5. Folder permissions
