@@ -85,8 +85,8 @@ type Task = {
   status: string;
   risk: boolean;
   cleaner: string | null;
-  ready_by: string;
-  check_out_time: string;
+  ready_by: string | null;
+  check_out_time: string | null;
   next_guest: string | null;
   checklist: string[];
   checklist_total: number;
@@ -331,8 +331,15 @@ export default function Dashboard({
               Today
             </button>
           )}
-          <a href={`/admin/today/export${query ? `?${query}` : ''}`} className="btn btn-light">
-            <Download size={15} /> Export
+          {/* Opens the PDF in a new tab: the browser's viewer has print and download. */}
+          <a
+            href={`/admin/today/export${query ? `?${query}` : ''}`}
+            target="_blank"
+            rel="noopener"
+            className="btn btn-light"
+            title="Open the front-desk report as a PDF"
+          >
+            <Download size={15} /> Export PDF
           </a>
           <NewBookingDialog
             defaultDate={day.date}
@@ -716,12 +723,13 @@ export default function Dashboard({
                     <span className="block truncate text-sm font-bold">{t.unit}</span>
                     <span className="block truncate text-xs font-semibold text-[var(--muted)]">
                       {isRange && `${short(t.date)} · `}
-                      {t.cleaner ?? 'Unassigned'} · {t.checklist.length}/{t.checklist_total}
+                      {t.cleaner ?? 'Unassigned'}
+                      {t.checklist_total > 0 && ` · ${t.checklist.length}/${t.checklist_total}`}
                     </span>
                   </span>
                   <span className="text-right text-xs font-semibold">
-                    <span className="block text-[var(--muted)]">ready by</span>
-                    <span className="num">{fmtTime(t.ready_by)}</span>
+                    <span className="block text-[var(--muted)]">{t.ready_by ? 'ready by' : 'due'}</span>
+                    <span className="num">{t.ready_by ? fmtTime(t.ready_by) : 'any time'}</span>
                   </span>
                 </li>
               ))}

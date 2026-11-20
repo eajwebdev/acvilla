@@ -51,10 +51,21 @@ export const staffNav: readonly NavItem[] = [
   ['/admin/calendar', 'Calendar', CalendarDays],
   ['/admin/pos', 'POS', ShoppingBasket],
 ];
+/** A manager is staff who also runs the Cleaning board: adds, assigns and edits the team's tasks. */
+export const managerNav: readonly NavItem[] = [
+  ['/admin/my-tasks', 'My tasks', ClipboardCheck],
+  ['/admin/cleaning', 'Cleaning', SprayCan],
+  ['/admin/attendance', 'Attendance', Clock3],
+  ['/admin/bookings', 'Bookings', BookOpen],
+  ['/admin/calendar', 'Calendar', CalendarDays],
+  ['/admin/pos', 'POS', ShoppingBasket],
+];
 export const platformNav: readonly NavItem[] = [
   ['/superadmin', 'Overview', LayoutGrid],
   ['/superadmin/clients', 'Clients', Users],
   ['/superadmin/health', 'System health', Activity],
+  // The platform owner can also work in AC Villa's admin as its Admin.
+  ['/admin', 'AC Villa admin', Building2],
 ];
 export const moreLinks: readonly NavItem[] = [
   ['/admin/properties', 'Properties & units', Building2],

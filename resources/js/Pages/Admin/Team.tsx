@@ -6,14 +6,16 @@ type Member = {
   id: number;
   name: string;
   email: string;
-  role: 'ADMIN' | 'STAFF';
+  role: 'ADMIN' | 'MANAGER' | 'STAFF';
   deactivated_at: string | null;
   created_at: string;
 };
 const roles = {
   ADMIN: 'Admin: operations, attendance, reports, settings and team',
+  MANAGER: 'Manager: everything Staff does, plus the Cleaning board: add, assign and edit tasks for the team',
   STAFF: 'Staff: assigned tasks, attendance, reservations, calendar and POS',
 };
+const roleName = { ADMIN: 'Admin', MANAGER: 'Manager', STAFF: 'Staff' };
 
 export default function Team({ members, me }: { members: Member[]; me: number }) {
   const form = useForm({ name: '', email: '', role: 'STAFF' as Member['role'], password: '' });
@@ -57,9 +59,7 @@ export default function Team({ members, me }: { members: Member[]; me: number })
                 </div>
               </div>
               {self ? (
-                <span className="text-sm font-semibold text-slate">
-                  {m.role === 'ADMIN' ? 'Admin' : 'Staff'} · manage in My profile
-                </span>
+                <span className="text-sm font-semibold text-slate">{roleName[m.role]} · manage in My profile</span>
               ) : (
                 <div className="flex flex-wrap items-center gap-2">
                   <select
@@ -70,6 +70,7 @@ export default function Team({ members, me }: { members: Member[]; me: number })
                     className="min-h-10 rounded-lg border border-slate-200 bg-white px-2 text-sm"
                   >
                     <option value="ADMIN">Admin</option>
+                    <option value="MANAGER">Manager</option>
                     <option value="STAFF">Staff</option>
                   </select>
                   <button

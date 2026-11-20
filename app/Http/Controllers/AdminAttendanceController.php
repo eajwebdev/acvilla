@@ -23,7 +23,7 @@ class AdminAttendanceController extends Controller
             ->get()->keyBy('user_id');
 
         $own = $entries->get($user->id);
-        if ($user->role === 'STAFF' && ! $own) {
+        if ($user->worksShifts() && ! $own) {
             $own = AttendanceEntry::where('tenant_id', $user->tenant_id)->where('user_id', $user->id)
                 ->whereNull('clocked_out_at')->latest('work_date')->first();
         }
@@ -33,7 +33,7 @@ class AdminAttendanceController extends Controller
             'today' => today()->toDateString(),
             'entry' => $this->entry($own),
             'staff' => $user->role === 'ADMIN'
-                ? User::where('tenant_id', $user->tenant_id)->where('role', 'STAFF')
+                ? User::where('tenant_id', $user->tenant_id)->whereIn('role', ['STAFF', 'MANAGER'])
                     ->where(fn ($query) => $query->whereNull('deactivated_at')->orWhereIn('id', $entries->keys()))
                     ->orderBy('name')->get(['id', 'name'])->map(fn (User $member) => [
                         'id' => $member->id,

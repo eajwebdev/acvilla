@@ -1,42 +1,39 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import {
   CalendarDays,
+  CalendarRange,
   ChevronLeft,
   ChevronRight,
   LayoutGrid,
+  ListChecks,
   Lock,
   PanelRightClose,
   PanelRightOpen,
   Plus,
+  Rows3,
+  Search,
   Trash2,
+  X,
 } from 'lucide-react';
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import BookingDrawer from '../../Components/BookingDrawer';
+import Schedule from '../../Components/calendar/Schedule';
+import { longDay, type Block, type Kind, type Row, type Unit } from '../../Components/calendar/shared';
+import TodayStrip from '../../Components/calendar/TodayStrip';
+import UnitBoard from '../../Components/calendar/UnitBoard';
 import DashboardShell from '../../Components/DashboardShell';
 import NewBookingDialog from '../../Components/NewBookingDialog';
-import { addDays, fmtDay, fmtTime, iso, parseDay, Status } from '../../Components/ops';
+import { addDays, fmtDay, fmtTime, iso, nightsBetween, parseDay, Status } from '../../Components/ops';
 import { palette } from '../../theme';
 
-type Row = {
-  id: number;
-  guest_name: string;
-  unit: string;
-  room_id: number;
-  check_in: string;
-  check_out: string;
-  check_in_time: string;
-  check_out_time: string;
-  status: string;
-  balance: number;
-  guests: number;
-};
-type Block = { id: number; room_id: number; unit: string; reason: string | null; starts_on: string; ends_on: string };
-type Unit = { id: number; name: string; property: string; quantity: number; active: boolean };
+type View = 'schedule' | 'board' | 'month';
 type Props = {
   month: string;
   start: string;
   today: string;
-  filters: { room_id?: number; date?: string };
+  view: View;
+  window: { from: string; to: string; bookings: Row[]; blocked: Block[] };
+  filters: { room_id?: number; date?: string; from?: string; to?: string };
   bookings: Row[];
   blocked: Block[];
   rooms: Unit[];
@@ -44,27 +41,307 @@ type Props = {
 };
 
 const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const views: [View, string, typeof CalendarDays][] = [
+  ['schedule', 'Schedule', ListChecks],
+  ['board', 'Unit board', Rows3],
+  ['month', 'Month', CalendarDays],
+];
+const kinds: [Kind, string][] = [
+  ['all', 'All'],
+  ['in', 'Check-ins'],
+  ['out', 'Check-outs'],
+  ['stay', 'Staying'],
+];
 
-export default function Calendar({ month, start, today, filters, bookings, blocked, rooms, inventory }: Props) {
+export default function Calendar(props: Props) {
+  const { today, filters, rooms, inventory, month } = props;
+  const [view, setView] = useState<View>(props.view);
+  const [drawer, setDrawer] = useState<number | null>(null);
+  const [booking, setBooking] = useState<{ date: string; unit?: number } | null>(null);
+  const [kind, setKind] = useState<Kind>('all');
+  const [search, setSearch] = useState('');
+  const { from, to } = props.window;
+
+  const visit = (params: Record<string, string | number | undefined>) =>
+    router.get(
+      '/admin/calendar',
+      { view, month, from: filters.from, to: filters.to, room_id: filters.room_id, ...params },
+      { preserveState: true, preserveScroll: true, replace: true },
+    );
+  const switchView = (v: View) => {
+    setView(v);
+    visit({ view: v === 'schedule' ? undefined : v });
+  };
+  const setRange = (f: string, t: string) => visit({ from: f, to: t });
+  const span = nightsBetween(from, to) + 1;
+  const presets: [string, string, string][] = [
+    ['Today', today, today],
+    ['Tomorrow', addDays(today, 1), addDays(today, 1)],
+    ['Next 7 days', today, addDays(today, 6)],
+    ['Next 30 days', today, addDays(today, 29)],
+  ];
+  const activePreset = presets.find(([, f, t]) => f === from && t === to)?.[0];
+  const activeUnits = rooms.filter(r => r.active && (!filters.room_id || r.id === Number(filters.room_id)));
+
+  return (
+    <DashboardShell bare>
+      <Head title="Calendar" />
+      <div className="px-4 pb-8 md:px-6">
+        {/* Title row: views, unit filter, new booking */}
+        <div className="page-head -mx-4 flex flex-wrap items-center gap-3 px-4 pt-5 pb-4 md:-mx-6 md:px-6">
+          <div className="mr-2">
+            <h1 className="font-serif text-[30px] leading-[1.1] font-semibold text-forest">Calendar</h1>
+            <p className="mt-0.5 text-[13px] font-semibold text-[var(--muted)]">
+              {view === 'month'
+                ? 'Month at a glance: arrivals, departures and occupancy'
+                : `${longDay(from)}${from === to ? '' : ` – ${longDay(to)}`} · ${span} ${span === 1 ? 'day' : 'days'}`}
+            </p>
+          </div>
+          <div className="seg" role="tablist" aria-label="Calendar view">
+            {views.map(([v, label, Icon]) => (
+              <button key={v} type="button" role="tab" aria-pressed={view === v} onClick={() => switchView(v)}>
+                <Icon size={15} />
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="flex w-full min-w-0 items-center gap-2 sm:ml-auto sm:w-auto">
+            <select
+              aria-label="Filter units"
+              value={filters.room_id ?? ''}
+              onChange={e => visit({ room_id: e.target.value || undefined })}
+              className="min-h-[38px] min-w-0 flex-1 rounded-full border border-[var(--line)] bg-white px-3 text-sm font-semibold sm:w-44 sm:flex-none"
+            >
+              <option value="">All units</option>
+              {rooms
+                .filter(r => r.active)
+                .map(r => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                    {r.quantity > 1 ? ` (${r.quantity})` : ''}
+                  </option>
+                ))}
+            </select>
+            <button type="button" onClick={() => setBooking({ date: today })} className="btn btn-pink shrink-0">
+              <Plus size={16} /> New booking
+            </button>
+          </div>
+        </div>
+
+        {view === 'month' ? (
+          <MonthView {...props} onOpen={setDrawer} onBook={date => setBooking({ date })} />
+        ) : (
+          <div className="grid gap-4">
+            <TodayStrip
+              today={today}
+              bookings={props.window.bookings}
+              blocks={props.window.blocked}
+              inventory={inventory}
+              onPick={k => {
+                // Jump to today's list of that kind, in one request.
+                setKind(k);
+                setSearch('');
+                setView('schedule');
+                if (view !== 'schedule' || from !== today || to !== today)
+                  visit({ view: undefined, from: today, to: today });
+              }}
+            />
+
+            {/* Dates: quick ranges, step back/forward, or any range */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  aria-label="Earlier dates"
+                  onClick={() => setRange(addDays(from, -span), addDays(to, -span))}
+                  className="grid size-9 place-items-center rounded-full border border-[var(--line)] bg-white hover:border-line-strong"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Later dates"
+                  onClick={() => setRange(addDays(from, span), addDays(to, span))}
+                  className="ml-1 grid size-9 place-items-center rounded-full border border-[var(--line)] bg-white hover:border-line-strong"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+              {presets.map(([label, f, t]) => (
+                <button
+                  key={label}
+                  type="button"
+                  className="chip"
+                  aria-pressed={activePreset === label}
+                  onClick={() => setRange(f, t)}
+                >
+                  {label}
+                </button>
+              ))}
+              <div
+                className="chip relative inline-flex cursor-pointer items-center gap-1.5"
+                aria-pressed={!activePreset}
+              >
+                <CalendarRange size={14} />
+                <span className="num">{from === to ? longDay(from) : `${fmtDay(from)} – ${fmtDay(to)}`}</span>
+                <RangePicker from={from} to={to} onChange={setRange} />
+              </div>
+              {view === 'schedule' && (
+                <div className="flex w-full flex-wrap items-center gap-2 lg:ml-auto lg:w-auto">
+                  <div className="seg" aria-label="Show">
+                    {kinds.map(([k, label]) => (
+                      <button key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(k)}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <label className="relative min-w-0 flex-1 lg:w-56 lg:flex-none">
+                    <Search size={15} className="absolute top-1/2 left-3 -translate-y-1/2 text-[var(--muted)]" />
+                    <input
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                      placeholder="Guest, phone, unit or ref"
+                      aria-label="Search the schedule"
+                      className="min-h-[38px] w-full rounded-full border border-[var(--line)] bg-white pr-8 pl-9 text-sm font-semibold"
+                    />
+                    {search && (
+                      <button
+                        type="button"
+                        aria-label="Clear search"
+                        onClick={() => setSearch('')}
+                        className="absolute top-1/2 right-2.5 -translate-y-1/2 text-[var(--muted)]"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </label>
+                </div>
+              )}
+            </div>
+
+            {view === 'schedule' ? (
+              <Schedule
+                from={from}
+                to={to}
+                today={today}
+                bookings={props.window.bookings}
+                blocks={props.window.blocked}
+                inventory={inventory}
+                kind={kind}
+                search={search}
+                onOpen={setDrawer}
+                onBook={date => setBooking({ date })}
+              />
+            ) : (
+              <UnitBoard
+                from={from}
+                to={to}
+                today={today}
+                rooms={activeUnits}
+                bookings={props.window.bookings}
+                blocks={props.window.blocked}
+                onOpen={setDrawer}
+                onBook={(date, unit) => setBooking({ date, unit })}
+              />
+            )}
+          </div>
+        )}
+      </div>
+      <NewBookingDialog
+        open={booking !== null}
+        onOpenChange={o => !o && setBooking(null)}
+        defaultDate={booking?.date}
+        defaultUnit={booking?.unit ?? (filters.room_id ? Number(filters.room_id) : undefined)}
+      />
+      <BookingDrawer id={drawer} onClose={() => setDrawer(null)} />
+    </DashboardShell>
+  );
+}
+
+/** A custom range: pick the first day, then the last (up to 62 days). */
+function RangePicker({ from, to, onChange }: { from: string; to: string; onChange: (f: string, t: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [f, setF] = useState(from);
+  const [t, setT] = useState(to);
+  useEffect(() => {
+    setF(from);
+    setT(to);
+  }, [from, to]);
+  return (
+    <>
+      <button type="button" className="absolute inset-0" aria-label="Pick dates" onClick={() => setOpen(!open)} />
+      {open && (
+        <div
+          className="absolute top-[calc(100%+6px)] left-0 z-30 grid w-[260px] gap-2 rounded-xl border border-[var(--line)] bg-white p-3 text-left shadow-lg"
+          onClick={e => e.stopPropagation()}
+        >
+          <label className="field">
+            From
+            <input
+              type="date"
+              value={f}
+              onChange={e => {
+                setF(e.target.value);
+                if (t < e.target.value) setT(e.target.value);
+              }}
+            />
+          </label>
+          <label className="field">
+            To
+            <input type="date" value={t} min={f} max={addDays(f, 61)} onChange={e => setT(e.target.value)} />
+          </label>
+          <div className="flex gap-2">
+            <button type="button" className="btn btn-light btn-sm flex-1" onClick={() => setOpen(false)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-navy btn-sm flex-1"
+              disabled={!f || !t}
+              onClick={() => {
+                setOpen(false);
+                onChange(f, t > addDays(f, 61) ? addDays(f, 61) : t);
+              }}
+            >
+              Show
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** The wall-calendar month: arrivals and departures per day, or occupancy as a heat map, with a day panel. */
+function MonthView({
+  month,
+  start,
+  today,
+  filters,
+  bookings,
+  blocked,
+  rooms,
+  inventory,
+  onOpen,
+  onBook,
+}: Props & { onOpen: (id: number) => void; onBook: (date: string) => void }) {
   const { auth } = usePage<{ auth: { user: { role: string } } }>().props;
   const admin = auth.user.role === 'ADMIN';
-  const [mode, setMode] = useState<'timeline' | 'occupancy'>('timeline');
+  const [mode, setMode] = useState<'bookings' | 'occupancy'>('bookings');
   const [selected, setSelected] = useState(filters.date ?? (today.startsWith(month) ? today : `${month}-01`));
   const [panel, setPanel] = useState(true);
-  const [drawer, setDrawer] = useState<number | null>(null);
-  const [booking, setBooking] = useState(false);
   const days = useMemo(() => Array.from({ length: 42 }, (_, i) => addDays(start, i)), [start]);
   const monthDate = parseDay(`${month}-01`);
+  const visit = (params: Record<string, string | number | undefined>) =>
+    router.get(
+      '/admin/calendar',
+      { view: 'month', month, room_id: filters.room_id, ...params },
+      { preserveState: true, preserveScroll: true, replace: true },
+    );
   const shift = (n: number) => {
     const d = new Date(monthDate.getFullYear(), monthDate.getMonth() + n, 1);
     visit({ month: iso(d).slice(0, 7) });
   };
-  const visit = (params: Record<string, string | number | undefined>) =>
-    router.get(
-      '/admin/calendar',
-      { month, room_id: filters.room_id, ...params },
-      { preserveState: true, preserveScroll: true, replace: true },
-    );
 
   const stats = useMemo(
     () =>
@@ -77,8 +354,12 @@ export default function Calendar({ month, start, today, filters, bookings, block
             d,
             {
               inHouse,
-              arriving: bookings.filter(b => b.check_in === d),
-              leaving: bookings.filter(b => b.check_out === d),
+              arriving: bookings
+                .filter(b => b.check_in === d)
+                .sort((a, b) => a.check_in_time.localeCompare(b.check_in_time)),
+              leaving: bookings
+                .filter(b => b.check_out === d)
+                .sort((a, b) => a.check_out_time.localeCompare(b.check_out_time)),
               blocks,
               vacant,
               occupancy: inventory ? Math.min(100, Math.round((100 * inHouse.length) / inventory)) : 0,
@@ -96,7 +377,7 @@ export default function Calendar({ month, start, today, filters, bookings, block
     vacant: inventory,
     occupancy: 0,
   };
-  // Occupancy runs from pale to the logo's forest green: one hue, so "more" always reads as darker.
+  // Occupancy runs from pale to the brand navy: one hue, so "more" always reads as darker.
   const heat = (p: number) =>
     p === 0
       ? palette.sand
@@ -109,310 +390,286 @@ export default function Calendar({ month, start, today, filters, bookings, block
             : palette.forest;
 
   return (
-    <DashboardShell bare>
-      <Head title="Calendar" />
-      <div className={`grid min-h-[calc(100vh-3.5rem)] ${panel ? 'xl:grid-cols-[minmax(0,1fr)_300px]' : ''}`}>
-        <div className="min-w-0 px-4 pb-6 md:px-5">
-          <div className="page-head -mx-4 flex flex-wrap items-center gap-3 px-4 py-4 md:-mx-5 md:px-5">
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                aria-label="Previous month"
-                onClick={() => shift(-1)}
-                className="grid size-8 place-items-center rounded-lg hover:bg-white"
-              >
-                <ChevronLeft size={17} />
-              </button>
-              <h1 className="min-w-[150px] text-center font-serif text-[24px] leading-[1.15] font-semibold text-forest">
-                {monthDate.toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })}
-              </h1>
-              <button
-                type="button"
-                aria-label="Next month"
-                onClick={() => shift(1)}
-                className="grid size-8 place-items-center rounded-lg hover:bg-white"
-              >
-                <ChevronRight size={17} />
-              </button>
-            </div>
+    <div className={`grid gap-4 ${panel ? 'xl:grid-cols-[minmax(0,1fr)_320px]' : ''}`}>
+      <div className="min-w-0">
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1">
             <button
               type="button"
-              onClick={() => {
-                setSelected(today);
-                visit({ month: today.slice(0, 7) });
-              }}
-              className="text-sm font-bold text-[var(--muted)] hover:text-[var(--ink)]"
+              aria-label="Previous month"
+              onClick={() => shift(-1)}
+              className="grid size-9 place-items-center rounded-full border border-[var(--line)] bg-white"
             >
-              Today
+              <ChevronLeft size={16} />
             </button>
-            <div className="seg">
-              <button type="button" aria-pressed={mode === 'timeline'} onClick={() => setMode('timeline')}>
-                <CalendarDays size={15} />
-                Timeline
-              </button>
-              <button type="button" aria-pressed={mode === 'occupancy'} onClick={() => setMode('occupancy')}>
-                <LayoutGrid size={15} />
-                Occupancy
-              </button>
+            <h2 className="min-w-[170px] text-center text-lg font-bold text-forest">
+              {monthDate.toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })}
+            </h2>
+            <button
+              type="button"
+              aria-label="Next month"
+              onClick={() => shift(1)}
+              className="grid size-9 place-items-center rounded-full border border-[var(--line)] bg-white"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setSelected(today);
+              visit({ month: today.slice(0, 7) });
+            }}
+            className="chip"
+          >
+            This month
+          </button>
+          <div className="seg ml-auto">
+            <button type="button" aria-pressed={mode === 'bookings'} onClick={() => setMode('bookings')}>
+              <CalendarDays size={15} />
+              Bookings
+            </button>
+            <button type="button" aria-pressed={mode === 'occupancy'} onClick={() => setMode('occupancy')}>
+              <LayoutGrid size={15} />
+              Occupancy
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPanel(!panel)}
+            aria-label={panel ? 'Hide day panel' : 'Show day panel'}
+            className="hidden size-9 place-items-center rounded-lg border border-[var(--line)] bg-white xl:grid"
+          >
+            {panel ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+          </button>
+        </div>
+        {mode === 'occupancy' && (
+          <p className="mb-2 flex items-center justify-end gap-2 text-xs font-semibold text-[var(--muted)]">
+            Empty
+            <span className="flex h-2.5 w-20 overflow-hidden rounded-full">
+              {[0, 20, 50, 80, 100].map(p => (
+                <span key={p} className="flex-1" style={{ background: heat(p) }} />
+              ))}
+            </span>
+            Full
+          </p>
+        )}
+        <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+          {weekdays.map(w => (
+            <div key={w} className="py-1 text-center text-[11px] font-bold text-[var(--muted)]">
+              {w}
             </div>
-            <div className="flex w-full min-w-0 items-center gap-2 sm:ml-auto sm:w-auto">
-              <select
-                aria-label="Filter units"
-                value={filters.room_id ?? ''}
-                onChange={e => visit({ room_id: e.target.value || undefined })}
-                className="min-h-[38px] min-w-0 flex-1 rounded-full border border-[var(--line)] bg-white px-3 text-sm font-semibold sm:w-40 sm:flex-none"
-              >
-                <option value="">● All units</option>
-                {rooms.map(r => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                    {r.quantity > 1 ? ` (${r.quantity})` : ''}
-                  </option>
-                ))}
-              </select>
-              <button type="button" onClick={() => setBooking(true)} className="btn btn-pink shrink-0">
-                <Plus size={16} /> New booking
-              </button>
+          ))}
+          {days.map(d => {
+            const s = stats[d];
+            const inMonth = d.startsWith(month);
+            const isToday = d === today;
+            const isSel = d === selected;
+            const weekend = [0, 6].includes(parseDay(d).getDay());
+            return (
               <button
                 type="button"
-                onClick={() => setPanel(!panel)}
-                aria-label={panel ? 'Hide day panel' : 'Show day panel'}
-                className="hidden size-9 place-items-center rounded-lg border border-[var(--line)] bg-white xl:grid"
+                key={d}
+                onClick={() => {
+                  setSelected(d);
+                  setPanel(true);
+                }}
+                onDoubleClick={() => onBook(d)}
+                className={`relative flex min-h-[78px] flex-col overflow-hidden rounded-xl border p-1.5 text-left transition sm:min-h-[104px] sm:p-2.5 ${isSel ? 'border-forest shadow-[0_0_0_1px_var(--forest)]' : 'border-[var(--line)] hover:border-line-strong'} ${inMonth ? '' : 'opacity-45'}`}
+                style={{
+                  background:
+                    mode === 'occupancy' && inMonth ? heat(s.occupancy) : inMonth ? palette.white : palette.paper,
+                }}
               >
-                {panel ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
-              </button>
-            </div>
-          </div>
-          {mode === 'occupancy' && (
-            <p className="mb-2 flex items-center justify-end gap-2 text-xs font-semibold text-[var(--muted)]">
-              Empty
-              <span className="flex h-2.5 w-20 overflow-hidden rounded-full">
-                {[0, 20, 50, 80, 100].map(p => (
-                  <span key={p} className="flex-1" style={{ background: heat(p) }} />
-                ))}
-              </span>
-              Full
-            </p>
-          )}
-          <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
-            {weekdays.map(w => (
-              <div key={w} className="py-1 text-center text-[11px] font-bold text-[var(--muted)]">
-                {w}
-              </div>
-            ))}
-            {days.map(d => {
-              const s = stats[d];
-              const inMonth = d.startsWith(month);
-              const isToday = d === today;
-              const isSel = d === selected;
-              const weekend = [0, 6].includes(parseDay(d).getDay());
-              return (
-                <button
-                  type="button"
-                  key={d}
-                  onClick={() => {
-                    setSelected(d);
-                    setPanel(true);
-                  }}
-                  onDoubleClick={() => {
-                    setSelected(d);
-                    setBooking(true);
-                  }}
-                  className={`relative flex min-h-[78px] flex-col overflow-hidden rounded-xl border p-1.5 text-left transition sm:min-h-[100px] sm:p-2.5 ${isSel ? 'border-forest shadow-[0_0_0_1px_var(--forest)]' : 'border-[var(--line)] hover:border-line-strong'} ${inMonth ? '' : 'opacity-50'}`}
-                  style={{
-                    background:
-                      mode === 'occupancy' && inMonth ? heat(s.occupancy) : inMonth ? palette.white : palette.paper,
-                  }}
-                >
-                  <span className="flex items-center gap-2">
-                    {isToday ? (
-                      <span className="grid size-7 place-items-center rounded-full bg-forest text-sm font-bold text-white">
-                        {Number(d.slice(8))}
-                      </span>
-                    ) : (
-                      <span
-                        className={`text-sm font-bold ${!inMonth ? 'text-slate-400' : weekend && mode === 'timeline' ? 'text-[var(--muted)]' : ''} ${mode === 'occupancy' && s.occupancy >= 67 ? 'text-white' : ''}`}
-                      >
-                        {Number(d.slice(8))}
-                      </span>
-                    )}
-                    {isToday && (
-                      <span className="hidden text-[9px] font-bold tracking-wider uppercase sm:inline">Today</span>
-                    )}
-                  </span>
-                  {mode === 'timeline' ? (
-                    <span className="mt-1 grid gap-0.5">
-                      {s.arriving.slice(0, 2).map(b => (
-                        <span
-                          key={`a${b.id}`}
-                          className="hidden truncate rounded-md bg-forest px-1.5 py-0.5 text-[10px] font-bold text-white sm:block"
-                        >
-                          → {b.guest_name}
-                        </span>
-                      ))}
-                      {s.leaving.slice(0, 1).map(b => (
-                        <span
-                          key={`l${b.id}`}
-                          className="hidden truncate rounded-md bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-700 sm:block"
-                        >
-                          ← {b.guest_name}
-                        </span>
-                      ))}
-                      {s.arriving.length + s.leaving.length > 3 && (
-                        <span className="hidden text-[10px] font-bold text-[var(--muted)] sm:block">
-                          +{s.arriving.length + s.leaving.length - 3} more
-                        </span>
-                      )}
-                      {s.blocks.length > 0 && (
-                        <span className="hidden items-center gap-1 text-[10px] font-bold text-[var(--muted)] sm:flex">
-                          <Lock size={10} />
-                          {s.blocks.length} blocked
-                        </span>
-                      )}
+                <span className="flex items-center gap-2">
+                  {isToday ? (
+                    <span className="grid size-7 place-items-center rounded-full bg-forest text-sm font-bold text-white">
+                      {Number(d.slice(8))}
                     </span>
                   ) : (
                     <span
-                      className={`num mt-auto text-xs font-semibold ${s.occupancy >= 67 ? 'text-white' : 'text-forest'}`}
+                      className={`text-sm font-bold ${!inMonth ? 'text-slate-400' : weekend && mode === 'bookings' ? 'text-[var(--muted)]' : ''} ${mode === 'occupancy' && s.occupancy >= 67 ? 'text-white' : ''}`}
                     >
-                      {s.occupancy}%
+                      {Number(d.slice(8))}
                     </span>
                   )}
-                  {mode === 'timeline' && inMonth && (
-                    <span
-                      className="mt-auto pt-1 pb-1 text-[10px] font-bold text-ink-soft sm:pb-0 sm:text-[11px]"
-                      title={`${s.vacant} vacant`}
-                    >
-                      {s.vacant}
-                      <span className="hidden sm:inline"> vacant</span>
+                  {mode === 'bookings' && (s.arriving.length > 0 || s.leaving.length > 0) && (
+                    <span className="ml-auto flex gap-1 text-[10px] font-bold sm:hidden">
+                      {s.arriving.length > 0 && <span className="text-emerald-700">{s.arriving.length}↓</span>}
+                      {s.leaving.length > 0 && <span className="text-amber-700">{s.leaving.length}↑</span>}
                     </span>
                   )}
-                  {mode === 'timeline' && (
-                    <span className="absolute inset-x-2 bottom-1 h-1 overflow-hidden rounded-full bg-line-soft">
-                      <span className="block h-full rounded-full bg-sea" style={{ width: `${s.occupancy}%` }} />
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        {panel && (
-          <aside className="border-t border-[var(--line)] bg-white p-4 xl:sticky xl:top-14 xl:h-[calc(100vh-3.5rem)] xl:overflow-y-auto xl:border-t-0 xl:border-l">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="label">{parseDay(selected).toLocaleDateString('en-PH', { weekday: 'long' })}</p>
-                <h2 className="text-2xl font-bold">{fmtDay(selected)}</h2>
-              </div>
-              <span className="mt-6 text-xs font-bold">{sel.vacant} vacant</span>
-            </div>
-            <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-              {(
-                [
-                  ['in-house', sel.inHouse.length, ''],
-                  ['arriving', sel.arriving.length, ''],
-                  ['leaving', sel.leaving.length, 'text-[var(--danger)]'],
-                ] as const
-              ).map(([label, n, tone]) => (
-                <div key={label} className="rounded-xl bg-mist py-3">
-                  <p className={`num text-lg font-semibold ${tone}`}>{n}</p>
-                  <p className="text-[10.5px] font-semibold text-[var(--muted)]">{label}</p>
-                </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={() => setBooking(true)}
-              disabled={selected < today}
-              className="btn btn-soft mt-3 w-full"
-            >
-              <Plus size={15} />
-              Book {fmtDay(selected)}
-            </button>
-            {[
-              ['Arriving', sel.arriving, 'check_in_time'],
-              ['Leaving', sel.leaving, 'check_out_time'],
-              ['In-house', sel.inHouse.filter(b => b.check_in !== selected), null],
-            ].map(
-              ([label, list, timeKey]) =>
-                (list as Row[]).length > 0 && (
-                  <div key={label as string} className="mt-4">
-                    <p className="label mb-1.5">{label as string}</p>
-                    <ul className="grid gap-1.5">
-                      {(list as Row[]).map(b => (
-                        <li key={b.id}>
-                          <button
-                            type="button"
-                            onClick={() => setDrawer(b.id)}
-                            className="flex w-full items-center justify-between gap-2 rounded-xl border border-[var(--line)] px-3 py-2 text-left hover:border-blue-400"
-                          >
-                            <span className="min-w-0">
-                              <span className="block truncate text-sm font-bold">{b.guest_name}</span>
-                              <span className="block truncate text-[11px] font-semibold text-[var(--muted)]">
-                                {b.unit}
-                                {timeKey
-                                  ? ` · ${fmtTime(b[timeKey as 'check_in_time'])}`
-                                  : ` · until ${fmtDay(b.check_out)}`}
-                              </span>
-                            </span>
-                            <Status value={b.status} />
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ),
-            )}
-            {!sel.arriving.length && !sel.leaving.length && !sel.inHouse.length && (
-              <p className="mt-6 text-center text-sm font-semibold text-[var(--muted)]">No bookings on this day.</p>
-            )}
-            {sel.blocks.length > 0 && (
-              <div className="mt-4">
-                <p className="label mb-1.5">Blocked</p>
-                <ul className="grid gap-1.5">
-                  {sel.blocks.map(b => (
-                    <li
-                      key={b.id}
-                      className="flex items-center justify-between gap-2 rounded-xl bg-mist px-3 py-2 text-xs font-semibold"
-                    >
-                      <span className="min-w-0">
-                        <span className="block truncate font-bold">{b.unit}</span>
-                        <span className="text-[var(--muted)]">
-                          {b.reason} · {fmtDay(b.starts_on)} to {fmtDay(b.ends_on)}
-                        </span>
+                </span>
+                {mode === 'bookings' ? (
+                  <span className="mt-1 grid gap-0.5">
+                    {s.arriving.slice(0, 2).map(b => (
+                      <span
+                        key={`a${b.id}`}
+                        className="hidden truncate rounded-md bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white sm:block"
+                        title={`Check-in ${fmtTime(b.check_in_time)} · ${b.guest_name} · ${b.unit}`}
+                      >
+                        {fmtTime(b.check_in_time).replace(':00', '')} {b.guest_name}
                       </span>
-                      {admin && (
+                    ))}
+                    {s.leaving.slice(0, 1).map(b => (
+                      <span
+                        key={`l${b.id}`}
+                        className="hidden truncate rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 sm:block"
+                        title={`Check-out ${fmtTime(b.check_out_time)} · ${b.guest_name} · ${b.unit}`}
+                      >
+                        out {b.guest_name}
+                      </span>
+                    ))}
+                    {s.arriving.length + s.leaving.length > 3 && (
+                      <span className="hidden text-[10px] font-bold text-[var(--muted)] sm:block">
+                        +{s.arriving.length + s.leaving.length - 3} more
+                      </span>
+                    )}
+                    {s.blocks.length > 0 && (
+                      <span className="hidden items-center gap-1 text-[10px] font-bold text-[var(--muted)] sm:flex">
+                        <Lock size={10} />
+                        {s.blocks.length} blocked
+                      </span>
+                    )}
+                  </span>
+                ) : (
+                  <span
+                    className={`num mt-auto text-xs font-semibold ${s.occupancy >= 67 ? 'text-white' : 'text-forest'}`}
+                  >
+                    {s.occupancy}%
+                  </span>
+                )}
+                {mode === 'bookings' && inMonth && (
+                  <span
+                    className="mt-auto pt-1 pb-1 text-[10px] font-bold text-ink-soft sm:pb-0 sm:text-[11px]"
+                    title={`${s.vacant} vacant`}
+                  >
+                    {s.vacant}
+                    <span className="hidden sm:inline"> vacant</span>
+                  </span>
+                )}
+                {mode === 'bookings' && (
+                  <span className="absolute inset-x-2 bottom-1 h-1 overflow-hidden rounded-full bg-line-soft">
+                    <span className="block h-full rounded-full bg-sea" style={{ width: `${s.occupancy}%` }} />
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-2 text-[11px] font-semibold text-[var(--muted)]">
+          Green: check-ins (with time) · Amber: check-outs · Double-click a day to book it.
+        </p>
+      </div>
+      {panel && (
+        <aside className="card h-fit p-4 xl:sticky xl:top-20">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="label">{parseDay(selected).toLocaleDateString('en-PH', { weekday: 'long' })}</p>
+              <h2 className="text-2xl font-bold">{fmtDay(selected)}</h2>
+            </div>
+            <span className="mt-6 text-xs font-bold">{sel.vacant} vacant</span>
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+            {(
+              [
+                ['in-house', sel.inHouse.length, ''],
+                ['arriving', sel.arriving.length, 'text-emerald-700'],
+                ['leaving', sel.leaving.length, 'text-amber-700'],
+              ] as const
+            ).map(([label, n, tone]) => (
+              <div key={label} className="rounded-xl bg-mist py-3">
+                <p className={`num text-lg font-semibold ${tone}`}>{n}</p>
+                <p className="text-[10.5px] font-semibold text-[var(--muted)]">{label}</p>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => onBook(selected)}
+            disabled={selected < today}
+            className="btn btn-soft mt-3 w-full"
+          >
+            <Plus size={15} />
+            Book {fmtDay(selected)}
+          </button>
+          {[
+            ['Arriving', sel.arriving, 'check_in_time'],
+            ['Leaving', sel.leaving, 'check_out_time'],
+            ['In-house', sel.inHouse.filter(b => b.check_in !== selected), null],
+          ].map(
+            ([label, list, timeKey]) =>
+              (list as Row[]).length > 0 && (
+                <div key={label as string} className="mt-4">
+                  <p className="label mb-1.5">{label as string}</p>
+                  <ul className="grid gap-1.5">
+                    {(list as Row[]).map(b => (
+                      <li key={b.id}>
                         <button
                           type="button"
-                          aria-label="Remove block"
-                          onClick={() =>
-                            confirm('Remove this block?') &&
-                            router.delete(`/admin/calendar/blocks/${b.id}`, {
-                              preserveScroll: true,
-                              preserveState: true,
-                            })
-                          }
-                          className="text-[var(--muted)] hover:text-[var(--danger)]"
+                          onClick={() => onOpen(b.id)}
+                          className="flex w-full items-center justify-between gap-2 rounded-xl border border-[var(--line)] px-3 py-2 text-left hover:border-blue-400"
                         >
-                          <Trash2 size={14} />
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-bold">{b.guest_name}</span>
+                            <span className="block truncate text-[11px] font-semibold text-[var(--muted)]">
+                              {b.unit}
+                              {timeKey
+                                ? ` · ${fmtTime(b[timeKey as 'check_in_time'])}`
+                                : ` · until ${fmtDay(b.check_out)}`}
+                            </span>
+                          </span>
+                          <Status value={b.status} />
                         </button>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {admin && rooms.length > 0 && <BlockForm rooms={rooms} date={selected < today ? today : selected} />}
-          </aside>
-        )}
-      </div>
-      <NewBookingDialog
-        open={booking}
-        onOpenChange={setBooking}
-        defaultDate={selected}
-        defaultUnit={filters.room_id ? Number(filters.room_id) : undefined}
-      />
-      <BookingDrawer id={drawer} onClose={() => setDrawer(null)} />
-    </DashboardShell>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ),
+          )}
+          {!sel.arriving.length && !sel.leaving.length && !sel.inHouse.length && (
+            <p className="mt-6 text-center text-sm font-semibold text-[var(--muted)]">No bookings on this day.</p>
+          )}
+          {sel.blocks.length > 0 && (
+            <div className="mt-4">
+              <p className="label mb-1.5">Blocked</p>
+              <ul className="grid gap-1.5">
+                {sel.blocks.map(b => (
+                  <li
+                    key={b.id}
+                    className="flex items-center justify-between gap-2 rounded-xl bg-mist px-3 py-2 text-xs font-semibold"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate font-bold">{b.unit}</span>
+                      <span className="text-[var(--muted)]">
+                        {b.reason} · {fmtDay(b.starts_on)} to {fmtDay(b.ends_on)}
+                      </span>
+                    </span>
+                    {admin && (
+                      <button
+                        type="button"
+                        aria-label="Remove block"
+                        onClick={() =>
+                          confirm('Remove this block?') &&
+                          router.delete(`/admin/calendar/blocks/${b.id}`, {
+                            preserveScroll: true,
+                            preserveState: true,
+                          })
+                        }
+                        className="text-[var(--muted)] hover:text-[var(--danger)]"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {admin && rooms.length > 0 && <BlockForm rooms={rooms} date={selected < today ? today : selected} />}
+        </aside>
+      )}
+    </div>
   );
 }
 

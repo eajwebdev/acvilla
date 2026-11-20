@@ -1,11 +1,11 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import { ChevronDown, Ellipsis, LogOut, Menu, Search, Settings, X } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Ellipsis, LogOut, Menu, Search, Settings, X } from 'lucide-react';
 import { useEffect, useState, type PropsWithChildren, type ReactNode } from 'react';
 import { BrandIcon } from './Brand';
 import CommandPalette from './CommandPalette';
 import FlashToast from './FlashToast';
 import { refreshPage, useLive } from './live';
-import { moreLinks, opsNav, platformNav, staffNav } from './nav';
+import { managerNav, moreLinks, opsNav, platformNav, staffNav } from './nav';
 import NotificationBell from './NotificationBell';
 
 type Props = PropsWithChildren<{
@@ -23,14 +23,17 @@ export default function DashboardShell({ children, title, subtitle, actions, pla
   const [open, setOpen] = useState(false);
   const [palette, setPalette] = useState(false);
   const { auth, myTaskCount, requestCount, notificationCount } = usePage<{
-    auth: { user: { name: string; role: string } };
+    auth: { user: { name: string; role: string; superadmin?: boolean } };
     myTaskCount?: number;
     requestCount?: number;
     notificationCount?: number;
   }>().props;
   const path = typeof window !== 'undefined' ? window.location.pathname : '';
-  const staff = auth.user.role === 'STAFF' && !platform;
-  const nav = platform ? platformNav : staff ? staffNav : opsNav;
+  const manager = auth.user.role === 'MANAGER' && !platform;
+  const staff = (auth.user.role === 'STAFF' || manager) && !platform;
+  const nav = platform ? platformNav : manager ? managerNav : staff ? staffNav : opsNav;
+  // The platform owner working in AC Villa's admin (they show there as its Admin).
+  const visiting = auth.user.superadmin && !platform;
   const isActive = (href: string) =>
     href === '/admin' || href === '/superadmin' ? path === href : path.startsWith(href);
   const [more, setMore] = useState(() => moreLinks.some(([href]) => href !== '/' && path.startsWith(href)));
@@ -54,7 +57,10 @@ export default function DashboardShell({ children, title, subtitle, actions, pla
   const linkClass = (on: boolean) =>
     `flex items-center gap-3 rounded-full px-4 py-2.5 text-[15px] transition ${on ? 'bg-[rgba(0,57,213,.1)] font-semibold text-forest' : 'font-medium text-ink-soft hover:bg-[rgba(0,57,213,.07)] hover:text-forest'}`;
   const home = platform ? '/superadmin' : staff ? '/admin/my-tasks' : '/admin';
-  const role = auth.user.role === 'ADMIN' ? 'Admin' : auth.user.role === 'STAFF' ? 'Staff' : 'Platform owner';
+  const role = visiting
+    ? 'Platform owner · AC Villa admin'
+    : (({ ADMIN: 'Admin', MANAGER: 'Manager', STAFF: 'Staff' } as Record<string, string>)[auth.user.role] ??
+      'Platform owner');
 
   return (
     <div className={`tapp min-h-screen md:grid md:grid-cols-[200px_minmax(0,1fr)] ${staff ? 'staff-workspace' : ''}`}>
@@ -108,8 +114,17 @@ export default function DashboardShell({ children, title, subtitle, actions, pla
             {isMac ? '⌘' : 'Ctrl'} K
           </kbd>
         </button>
+        {visiting && (
+          <Link
+            href="/superadmin"
+            className="mx-2.5 mt-3 flex items-center gap-2 rounded-full border border-[var(--line)] px-3.5 py-2 text-[13px] font-semibold text-forest hover:bg-tint"
+          >
+            <ArrowLeft size={15} />
+            Back to platform
+          </Link>
+        )}
         <p className="mt-5 px-5 text-[10px] font-semibold tracking-[.2em] text-gold uppercase">
-          {platform ? 'Platform' : staff ? 'Staff workspace' : 'Operations'}
+          {platform ? 'Platform' : manager ? 'Manager workspace' : staff ? 'Staff workspace' : 'Operations'}
         </p>
         <nav className="mt-2 grid gap-1 px-2.5" aria-label="Main">
           {nav.map(([href, label, Icon]) => (

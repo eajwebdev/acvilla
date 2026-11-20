@@ -57,7 +57,7 @@ php artisan db:seed --class=AcVillaSeeder --force
 This creates the resort, its rooms, halls, prices, the InstaPay QR and the four sign-ins listed in the README
 (`superadmin`, `administrator`, `staff`, `guest`). Sign in and change their passwords right away: until you do,
 `php artisan app:production-check` fails. Re-running the seeder never resets a changed password. **Do not** run
-`DemoSeeder` or `ConflictTestSeeder` on the live site; they are for testing only.
+`DemoSeeder` on the live site; it is for the automated tests only.
 
 ## 5. Folder permissions
 

@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\RequireRole::class,
             'tenant.active' => \App\Http\Middleware\RequireActiveTenant::class,
+            'site.superadmin' => \App\Http\Middleware\SuperadminActsAsSiteAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

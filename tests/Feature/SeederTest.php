@@ -149,28 +149,51 @@ class SeederTest extends TestCase
         $this->assertSame(['/uploads/site/new-qr.png', 'NEW N.'], [$kept['qr_image'], $kept['account_name']]);
     }
 
-    public function test_conflict_test_seed_books_fixed_november_dates_without_overlaps(): void
+    public function test_the_seed_adds_no_bookings_or_customers(): void
     {
         $this->seed();
-        $this->seed(\Database\Seeders\ConflictTestSeeder::class);
-        $this->seed(\Database\Seeders\ConflictTestSeeder::class);
+        $this->assertDatabaseCount('bookings', 0);
+        $this->assertDatabaseCount('customers', 0);
+    }
 
-        $year = now(config('platform.timezone'))->year;
-        $nov = fn (int $day) => sprintf('%d-11-%02d', $year, $day);
-        $bookings = Booking::with('room')->orderBy('check_in')->orderBy('id')->get();
-        $this->assertSame([
-            ['Barkada Room', $nov(5), $nov(6)], ['Exclusive Whole Resort Package', $nov(6), $nov(7)],
-            ['AH Room 1', $nov(8), $nov(9)], ['AH Room 2', $nov(8), $nov(9)], ['AH Room 3', $nov(8), $nov(9)],
-        ], $bookings->map(fn (Booking $b) => [$b->room->name, $b->check_in->toDateString(), $b->check_out->toDateString()])->all());
-        // Approved: downpayment paid, nothing double-booked.
-        $bookings->each(fn (Booking $b) => $this->assertSame(['CONFIRMED', 'PARTIALLY_PAID'], [$b->status, $b->payment_status]));
-        $availability = app(\App\Services\AvailabilityService::class);
-        $rooms = Room::pluck('id', 'slug');
-        $free = fn (string $slug, int $day) => $availability->available(Room::find($rooms[$slug]), $nov($day), $nov($day + 1));
-        $this->assertFalse($free('function-hall', 6));
-        $this->assertTrue($free('function-hall', 7));
-        $this->assertFalse($free('ah-room-2', 8));
-        $this->assertTrue($free('barkada-room', 8));
+    public function test_the_cleanup_migration_removes_only_the_sample_bookings_and_their_customers(): void
+    {
+        $this->seed();
+        $tenant = Tenant::where('slug', 'ac-villa')->sole();
+        $sample = $this->booking($tenant, 'ACV-TEST-RESORT', 'whole-resort', 'Maria Dela Cruz', '0917 555 0102');
+        $this->booking($tenant, 'ACV-TEST-AH1', 'ah-room-1', 'Jose Ramos', '0917 555 0103');
+        $real = $this->booking($tenant, 'ACV-REAL-1', 'barkada-room', 'Real Guest', '0917 000 1111');
+        // A sample guest who also made a real booking is a real customer: they stay.
+        $both = $this->booking($tenant, 'ACV-TEST-AH2', 'ah-room-2', 'Ana Villanueva', '0917 555 0104');
+        $this->booking($tenant, 'ACV-REAL-2', 'ah-room-3', 'Ana Villanueva', '0917 555 0104');
+        \App\Models\CleaningTask::create(['tenant_id' => $tenant->id, 'room_id' => $sample->room_id, 'booking_id' => $sample->id, 'date' => $sample->check_out, 'checklist' => []]);
+        $sample->delete(); // soft-deleted sample bookings go too
+
+        (require database_path('migrations/2026_11_20_000001_remove_sample_bookings_and_customers.php'))->up();
+
+        $this->assertSame(['ACV-REAL-1', 'ACV-REAL-2'], Booking::withTrashed()->orderBy('reference')->pluck('reference')->all());
+        $this->assertSame(['Ana Villanueva', 'Real Guest'], \App\Models\Customer::orderBy('name')->pluck('name')->all());
+        $this->assertDatabaseCount('cleaning_tasks', 0);
+        $this->assertDatabaseMissing('payments', ['reference' => 'PAY-ACV-TEST-RESORT']);
+        $this->assertDatabaseHas('payments', ['booking_id' => $real->id]);
+        $this->assertNull($both->fresh());
+    }
+
+    private function booking(Tenant $tenant, string $reference, string $slug, string $name, string $phone): Booking
+    {
+        $room = Room::where('tenant_id', $tenant->id)->where('slug', $slug)->sole();
+        $in = today()->addDays(30)->toDateString();
+        $out = today()->addDays(31)->toDateString();
+        $quote = app(\App\Services\PricingService::class)->quote($room, $in, $out, 2);
+        $customer = \App\Models\Customer::fromGuest($tenant->id, ['guest_name' => $name, 'guest_phone' => $phone]);
+        $booking = Booking::create(['reference' => $reference, 'tenant_id' => $tenant->id, 'property_id' => $room->property_id, 'room_id' => $room->id,
+            'customer_id' => $customer->id, 'guest_name' => $name, 'guest_phone' => $phone, 'check_in' => $in, 'check_out' => $out, 'guests' => 2,
+            'status' => 'CONFIRMED', 'payment_status' => 'PARTIALLY_PAID', 'source' => 'website', 'total' => $quote['total']]);
+        $booking->price()->create($quote);
+        \App\Models\Payment::create(['reference' => 'PAY-'.$reference, 'tenant_id' => $tenant->id, 'booking_id' => $booking->id, 'method' => 'gcash',
+            'provider' => 'manual', 'status' => 'PAID', 'amount' => 100, 'paid_at' => now()]);
+
+        return $booking;
     }
 
     public function test_reseeding_refreshes_a_house_photos_but_keeps_owner_uploads(): void

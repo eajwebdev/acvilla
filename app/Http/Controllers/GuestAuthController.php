@@ -35,7 +35,7 @@ class GuestAuthController extends Controller
         if ($user->role !== 'GUEST') {
             $request->session()->forget('guest_return');
 
-            return match ($user->role) { 'STAFF' => '/admin/my-tasks', 'SUPERADMIN' => '/superadmin', default => '/admin' };
+            return match ($user->role) { 'STAFF', 'MANAGER' => '/admin/my-tasks', 'SUPERADMIN' => '/superadmin', default => '/admin' };
         }
 
         return blank($user->phone) ? '/account/complete' : $request->session()->pull('guest_return', '/booking');

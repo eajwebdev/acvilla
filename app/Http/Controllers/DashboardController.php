@@ -12,6 +12,7 @@ use App\Services\CleaningService;
 use App\Services\DashboardMetrics;
 use App\Services\DashboardPeriod;
 use App\Services\OperationsService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -20,7 +21,7 @@ class DashboardController extends Controller
 {
     public function admin(Request $request, OperationsService $operations, CleaningService $cleaning)
     {
-        if ($request->user()->role === 'STAFF') {
+        if ($request->user()->worksShifts()) {
             return redirect()->route('admin.tasks.mine');
         }
         $data = $request->validate(['months' => ['nullable', 'in:3,6,12'], ...self::RANGE_RULES]);
@@ -62,14 +63,36 @@ class DashboardController extends Controller
         return [$from, $to->min($from->addDays(365))];
     }
 
-    /** Arrivals and departures for the day or range as a spreadsheet for the front desk. */
-    public function exportDay(Request $request, OperationsService $operations)
+    /**
+     * The front-desk report for the day or range: a PDF that opens in the browser's viewer (print or save from there),
+     * ?download=1 to save it straight away, or ?format=csv for the spreadsheet.
+     */
+    public function exportDay(Request $request, OperationsService $operations, CleaningService $cleaning)
     {
-        $data = $request->validate(self::RANGE_RULES);
+        $data = $request->validate([...self::RANGE_RULES, 'format' => ['nullable', 'in:pdf,csv'], 'download' => ['nullable', 'boolean']]);
         $tenant = $request->user()->tenant;
+        $settings = $tenant->settings;
         [$date, $to] = $this->range($data);
-        $day = $operations->period($tenant->id, $date, $to, $tenant->settings);
+        $day = $operations->period($tenant->id, $date, $to, $settings);
         $name = $date->equalTo($to) ? $date->toDateString() : $date->toDateString().'_to_'.$to->toDateString();
+
+        if (($data['format'] ?? 'pdf') === 'pdf') {
+            // Tasks are listed day by day, so only for ranges up to a month (as on the dashboard).
+            $span = (int) $date->diffInDays($to);
+            $tasks = $span < 31 ? collect(range(0, $span))->flatMap(fn (int $i) => $cleaning->forDay($tenant->id, $date->addDays($i), $settings))->values() : null;
+            $pdf = Pdf::loadView('reports.front-desk', [
+                'tenant' => $tenant, 'day' => $day, 'tasks' => $tasks, 'from' => $date, 'to' => $to,
+                'currency' => $settings['currency'] ?? 'PHP', 'by' => $request->user()->name,
+                'logo' => $tenant->slug === config('platform.site_tenant') ? $this->logoDataUri() : null,
+            ])->setPaper('a4', 'landscape')->setOption(['enable_font_subsetting' => true, 'default_font' => 'DejaVu Sans']);
+            $pdf->render();
+            $canvas = $pdf->getCanvas();
+            $font = $pdf->getDomPDF()->getFontMetrics()->getFont('DejaVu Sans');
+            $canvas->page_text($canvas->get_width() - 88, $canvas->get_height() - 22, 'Page {PAGE_NUM} of {PAGE_COUNT}', $font, 6.5, [0.42, 0.45, 0.52]);
+            $file = 'front-desk_'.$name.'.pdf';
+
+            return $request->boolean('download') ? $pdf->download($file) : $pdf->stream($file);
+        }
 
         return response()->streamDownload(function () use ($day) {
             $out = fopen('php://output', 'w');
@@ -83,6 +106,14 @@ class DashboardController extends Controller
             }
             fclose($out);
         }, 'front-desk_'.$name.'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /** The resort's logo, embedded so the PDF never has to fetch a file. */
+    private function logoDataUri(): ?string
+    {
+        $path = public_path('images/acvilla/ui/logo-plaque.png');
+
+        return is_file($path) ? 'data:image/png;base64,'.base64_encode((string) file_get_contents($path)) : null;
     }
 
     /** Booked stay value per check-in month, oldest first, ending with the current month. */

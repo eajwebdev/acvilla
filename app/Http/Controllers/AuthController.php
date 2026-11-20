@@ -86,7 +86,7 @@ class AuthController extends Controller
     private function dashboard(string $role): string
     {
         return match ($role) {
-            'SUPERADMIN' => route('superadmin.dashboard'), 'ADMIN' => route('admin.dashboard'), 'STAFF' => route('admin.tasks.mine'), default => route('account.bookings')
+            'SUPERADMIN' => route('superadmin.dashboard'), 'ADMIN' => route('admin.dashboard'), 'STAFF', 'MANAGER' => route('admin.tasks.mine'), default => route('account.bookings')
         };
     }
 }

@@ -12,6 +12,17 @@ class CleaningTask extends Model
 
     protected $guarded = ['id'];
 
+    /** Added by hand (a title, maybe no room), as opposed to the turnover made for a check-out. */
+    public function isManual(): bool
+    {
+        return $this->booking_id === null && filled($this->title);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     protected function casts(): array
     {
         return ['date' => 'date:Y-m-d', 'checklist' => 'array', 'started_at' => 'datetime', 'completed_at' => 'datetime'];

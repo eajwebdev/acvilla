@@ -1,20 +1,42 @@
 import { Head, router } from '@inertiajs/react';
-import { Camera, Check, ChevronDown, ChevronLeft, ChevronRight, Play, RotateCcw, SprayCan, Users } from 'lucide-react';
+import {
+  Camera,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  Pencil,
+  Play,
+  Plus,
+  RotateCcw,
+  SprayCan,
+  Trash2,
+  Users,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import DashboardShell from '../../Components/DashboardShell';
 import { addDays, Card, Empty, fmtDay, fmtTime, rowAction } from '../../Components/ops';
+import TaskDialog, { type TaskDraft } from '../../Components/TaskDialog';
 import TaskPhotos, { type TaskPhoto } from '../../Components/TaskPhotos';
 
 type Task = {
   id: number;
-  room_id: number;
+  kind: 'turnover' | 'manual';
+  title: string | null;
+  room_id: number | null;
+  room: string | null;
+  date: string;
+  created_by: string | null;
   unit: string;
   status: 'NOT_STARTED' | 'IN_PROGRESS' | 'DONE';
   risk: boolean;
   assigned_to: number | null;
   cleaner: string | null;
-  check_out_time: string;
-  ready_by: string;
+  /** Null for a task added by hand: it has no check-out before it. */
+  check_out_time: string | null;
+  /** When it must be done: the next check-in, or a manual task's due time (null = any time that day). */
+  ready_by: string | null;
   next_guest: string | null;
   departing_guest: string | null;
   checklist: string[];
@@ -32,8 +54,20 @@ type Props = {
   checklist: string[];
   checkOutTime: string;
   checkInTime: string;
-  cleaners: { id: number; name: string }[];
+  cleaners: { id: number; name: string; role: string }[];
+  rooms: { id: number; name: string }[];
 };
+
+const draftOf = (t: Task): TaskDraft => ({
+  id: t.id,
+  title: t.title ?? '',
+  date: t.date,
+  due_time: t.ready_by ?? '',
+  room_id: t.room_id ?? '',
+  assigned_to: t.assigned_to ?? '',
+  notes: t.notes ?? '',
+});
+const dueLabel = (t: Task) => (t.ready_by ? fmtTime(t.ready_by) : 'Any time');
 
 const START = 8,
   END = 19; // 8am to 7pm
@@ -66,8 +100,16 @@ export default function Cleaning({
   checkOutTime,
   checkInTime,
   cleaners,
+  rooms,
 }: Props) {
   const [view, setView] = useState(initialView);
+  // null: closed; {}: a new task; a draft: editing that task.
+  const [dialog, setDialog] = useState<TaskDraft | null | undefined>(undefined);
+  const turnovers = tasks.filter(t => t.kind === 'turnover');
+  const remove = (t: Task) => {
+    if (confirm(`Remove the task “${t.title}”?`))
+      router.delete(`/admin/cleaning/${t.id}`, { preserveScroll: true, preserveState: true });
+  };
   const [open, setOpen] = useState<number | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [now, setNow] = useState(() => new Date());
@@ -112,6 +154,10 @@ export default function Cleaning({
       }
       actions={
         <div className="flex items-center gap-1">
+          <button type="button" onClick={() => setDialog(null)} className="btn btn-pink btn-sm mr-2">
+            <Plus size={14} />
+            Add task
+          </button>
           <button
             type="button"
             aria-label="Previous day"
@@ -142,6 +188,15 @@ export default function Cleaning({
       }
     >
       <Head title="Cleaning" />
+      <TaskDialog
+        open={dialog !== undefined}
+        onOpenChange={o => !o && setDialog(undefined)}
+        task={dialog}
+        date={date}
+        today={today}
+        rooms={rooms}
+        people={cleaners}
+      />
       <div className="mb-3 flex items-center justify-between">
         <p className="label">Overview</p>
         <div className="seg">
@@ -183,7 +238,7 @@ export default function Cleaning({
                   </span>
                 ))}
               </div>
-              <div className="relative" style={{ minHeight: Math.max(76, tasks.length * 40 + 36) }}>
+              <div className="relative" style={{ minHeight: Math.max(76, turnovers.length * 40 + 36) }}>
                 {Array.from({ length: END - START + 1 }, (_, i) => START + i).map(h => (
                   <span key={h} className="absolute inset-y-0 w-px bg-sand" style={{ left: pct(h) }} />
                 ))}
@@ -218,14 +273,16 @@ export default function Cleaning({
                     </span>
                   </span>
                 )}
-                {tasks.length === 0 ? (
+                {turnovers.length === 0 ? (
                   <p className="absolute inset-0 grid place-items-center pt-6 text-sm font-semibold text-[var(--muted)]">
-                    No rooms scheduled.
+                    No check-out cleanings this day.
                   </p>
                 ) : (
-                  tasks.map((t, i) => {
-                    const from = toHours(isoTime(t.started_at) ?? t.check_out_time);
-                    const to = toHours(t.status === 'DONE' ? (isoTime(t.completed_at) ?? t.ready_by) : t.ready_by);
+                  turnovers.map((t, i) => {
+                    const out = t.check_out_time ?? checkOutTime;
+                    const ready = t.ready_by ?? checkInTime;
+                    const from = toHours(isoTime(t.started_at) ?? out);
+                    const to = toHours(t.status === 'DONE' ? (isoTime(t.completed_at) ?? ready) : ready);
                     const c = tone(t);
                     return (
                       <div
@@ -237,8 +294,8 @@ export default function Cleaning({
                         <span
                           className="absolute h-1.5 rounded-full bg-line-soft"
                           style={{
-                            left: pct(toHours(t.check_out_time)),
-                            width: `calc(${pct(toHours(t.ready_by))} - ${pct(toHours(t.check_out_time))})`,
+                            left: pct(toHours(out)),
+                            width: `calc(${pct(toHours(ready))} - ${pct(toHours(out))})`,
                           }}
                         />
                         <button
@@ -260,9 +317,9 @@ export default function Cleaning({
           </div>
         </Card>
       ) : (
-        <Card title="Workload" subtitle="Turnovers per cleaner for the day" bodyClass="p-5">
+        <Card title="Workload" subtitle="Tasks per person for the day" bodyClass="p-5">
           {tasks.length === 0 ? (
-            <Empty icon={<Users size={18} />} title="No turnovers to share out" />
+            <Empty icon={<Users size={18} />} title="No tasks to share out" />
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {workload.map(([name, list]) => (
@@ -286,7 +343,9 @@ export default function Cleaning({
                           <span className={`size-2 rounded-full ${tone(t).dot}`} />
                           {t.unit}
                         </span>
-                        <span className="text-[var(--muted)]">by {fmtTime(t.ready_by)}</span>
+                        <span className="text-[var(--muted)]">
+                          {t.ready_by ? `by ${fmtTime(t.ready_by)}` : 'any time'}
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -339,8 +398,10 @@ export default function Cleaning({
       </Card>
 
       <div className="mt-6 flex items-baseline justify-between">
-        <h2 className="text-lg font-bold">{isToday ? "Today's rooms" : 'Rooms'}</h2>
-        <span className="text-xs font-semibold text-[var(--muted)]">{tasks.length} rooms</span>
+        <h2 className="text-lg font-bold">{isToday ? "Today's tasks" : 'Tasks'}</h2>
+        <span className="text-xs font-semibold text-[var(--muted)]">
+          {turnovers.length} rooms · {tasks.length - turnovers.length} added by hand
+        </span>
       </div>
       <div className="card mt-2 overflow-x-auto">
         <table className="table w-full min-w-[820px]">
@@ -352,11 +413,11 @@ export default function Cleaning({
                   onClick={() => setSortDir(sortDir === 'asc' ? 'desc' : 'asc')}
                   className="flex items-center gap-1"
                 >
-                  Room
+                  Task
                   <ChevronDown size={12} className={sortDir === 'desc' ? 'rotate-180' : ''} />
                 </button>
               </th>
-              <th>Turnover</th>
+              <th>When</th>
               <th>Cleaner</th>
               <th>Ready by</th>
               <th>Progress</th>
@@ -369,8 +430,8 @@ export default function Cleaning({
                 <td colSpan={6}>
                   <Empty
                     icon={<SprayCan size={18} />}
-                    title="No cleaning tasks this day."
-                    body="Turnovers appear here automatically when a guest is due to check out."
+                    title="No tasks this day."
+                    body="Check-out cleanings appear here automatically. Use Add task for anything else."
                   />
                 </td>
               </tr>
@@ -386,16 +447,37 @@ export default function Cleaning({
                         size={14}
                         className={`text-[var(--muted)] transition ${expanded ? 'rotate-90' : ''}`}
                       />
-                      {t.unit}
+                      {t.kind === 'manual' && <ClipboardList size={14} className="shrink-0 text-ocean" />}
+                      <span className="min-w-0">
+                        {t.unit}
+                        {t.kind === 'manual' && (
+                          <span className="block text-[11px] font-semibold text-[var(--muted)]">
+                            {[t.room, t.created_by && `added by ${t.created_by}`].filter(Boolean).join(' · ')}
+                          </span>
+                        )}
+                      </span>
                     </span>
                   </td>
-                  <td className="text-xs font-semibold">
-                    <span className="num">{fmtTime(t.check_out_time)}</span> →{' '}
-                    <span className="num">{fmtTime(t.ready_by)}</span>
-                    <span className="block text-[var(--muted)]">
-                      {t.next_guest ? `Next: ${t.next_guest}` : 'No arrival today'}
-                    </span>
-                  </td>
+                  {t.kind === 'manual' ? (
+                    <td className="text-xs font-semibold">
+                      {t.ready_by ? (
+                        <>
+                          Due <span className="num">{fmtTime(t.ready_by)}</span>
+                        </>
+                      ) : (
+                        'Any time today'
+                      )}
+                      <span className="block text-[var(--muted)]">Added by hand</span>
+                    </td>
+                  ) : (
+                    <td className="text-xs font-semibold">
+                      <span className="num">{fmtTime(t.check_out_time)}</span> →{' '}
+                      <span className="num">{fmtTime(t.ready_by)}</span>
+                      <span className="block text-[var(--muted)]">
+                        {t.next_guest ? `Next: ${t.next_guest}` : 'No arrival today'}
+                      </span>
+                    </td>
+                  )}
                   <td onClick={e => e.stopPropagation()}>
                     <select
                       aria-label={`Cleaner for ${t.unit}`}
@@ -411,22 +493,26 @@ export default function Cleaning({
                       ))}
                     </select>
                   </td>
-                  <td className={`num text-sm font-semibold ${t.risk ? 'text-[var(--danger)]' : ''}`}>
-                    {fmtTime(t.ready_by)}
-                  </td>
+                  <td className={`num text-sm font-semibold ${t.risk ? 'text-[var(--danger)]' : ''}`}>{dueLabel(t)}</td>
                   <td>
                     <span className="flex items-center gap-2">
-                      <span className="h-1.5 w-20 overflow-hidden rounded-full bg-sand">
-                        <span
-                          className="block h-full bg-sea"
-                          style={{
-                            width: `${t.checklist_total ? (100 * t.checklist.length) / t.checklist_total : t.status === 'DONE' ? 100 : 0}%`,
-                          }}
-                        />
-                      </span>
-                      <span className="num text-xs font-semibold">
-                        {t.checklist.length}/{t.checklist_total}
-                      </span>
+                      {t.kind === 'manual' ? (
+                        <span className="text-xs font-semibold text-[var(--muted)]">No checklist</span>
+                      ) : (
+                        <>
+                          <span className="h-1.5 w-20 overflow-hidden rounded-full bg-sand">
+                            <span
+                              className="block h-full bg-sea"
+                              style={{
+                                width: `${t.checklist_total ? (100 * t.checklist.length) / t.checklist_total : t.status === 'DONE' ? 100 : 0}%`,
+                              }}
+                            />
+                          </span>
+                          <span className="num text-xs font-semibold">
+                            {t.checklist.length}/{t.checklist_total}
+                          </span>
+                        </>
+                      )}
                       {t.photos.length > 0 && (
                         <span
                           className="num flex items-center gap-0.5 text-xs font-semibold text-ocean"
@@ -486,7 +572,14 @@ export default function Cleaning({
                 expanded && (
                   <tr key={`${t.id}-x`}>
                     <td colSpan={6} className="bg-paper">
-                      <Checklist task={t} items={checklist} locked={date > today} onSave={data => update(t, data)} />
+                      <Checklist
+                        task={t}
+                        items={t.kind === 'manual' ? [] : checklist}
+                        locked={date > today}
+                        onSave={data => update(t, data)}
+                        onEdit={t.kind === 'manual' ? () => setDialog(draftOf(t)) : undefined}
+                        onRemove={t.kind === 'manual' ? () => remove(t) : undefined}
+                      />
                     </td>
                   </tr>
                 ),
@@ -504,11 +597,15 @@ function Checklist({
   items,
   locked,
   onSave,
+  onEdit,
+  onRemove,
 }: {
   task: Task;
   items: string[];
   locked: boolean;
   onSave: (d: Record<string, unknown>) => void;
+  onEdit?: () => void;
+  onRemove?: () => void;
 }) {
   const [notes, setNotes] = useState(task.notes ?? '');
   useEffect(() => setNotes(task.notes ?? ''), [task.notes]);
@@ -518,40 +615,70 @@ function Checklist({
     });
   return (
     <div className="grid gap-4 py-2 md:grid-cols-[1fr_280px]">
-      <div>
-        <p className="label mb-2">
-          Checklist{' '}
-          {task.departing_guest && <span className="tracking-normal normal-case">· after {task.departing_guest}</span>}
-        </p>
-        {items.length === 0 ? (
-          <p className="text-xs font-semibold text-[var(--muted)]">
-            No checklist set up. Add steps under Settings → Cleaning checklist.
+      {task.kind === 'manual' ? (
+        <div>
+          <p className="label mb-2">Task added by hand</p>
+          <p className="text-sm font-semibold">{task.title}</p>
+          <p className="mt-1 text-xs font-semibold text-[var(--muted)]">
+            {[
+              task.room ?? 'Not about a room',
+              task.ready_by ? `due ${fmtTime(task.ready_by)}` : 'any time that day',
+              task.created_by && `added by ${task.created_by}`,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
           </p>
-        ) : (
-          <div className="grid gap-1.5 sm:grid-cols-2">
-            {items.map(item => (
-              <label
-                key={item}
-                className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm font-semibold"
-              >
-                <input
-                  type="checkbox"
-                  checked={task.checklist.includes(item)}
-                  disabled={locked}
-                  onChange={() => toggle(item)}
-                  className="size-4 accent-forest"
-                />
-                <span className={task.checklist.includes(item) ? 'text-[var(--muted)] line-through' : ''}>{item}</span>
-              </label>
-            ))}
+          <div className="mt-3 flex gap-2">
+            <button type="button" onClick={onEdit} className="btn btn-light btn-sm">
+              <Pencil size={12} />
+              Edit
+            </button>
+            <button type="button" onClick={onRemove} className="btn btn-light btn-sm text-[var(--danger)]">
+              <Trash2 size={12} />
+              Remove
+            </button>
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div>
+          <p className="label mb-2">
+            Checklist{' '}
+            {task.departing_guest && (
+              <span className="tracking-normal normal-case">· after {task.departing_guest}</span>
+            )}
+          </p>
+          {items.length === 0 ? (
+            <p className="text-xs font-semibold text-[var(--muted)]">
+              No checklist set up. Add steps under Settings → Cleaning checklist.
+            </p>
+          ) : (
+            <div className="grid gap-1.5 sm:grid-cols-2">
+              {items.map(item => (
+                <label
+                  key={item}
+                  className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm font-semibold"
+                >
+                  <input
+                    type="checkbox"
+                    checked={task.checklist.includes(item)}
+                    disabled={locked}
+                    onChange={() => toggle(item)}
+                    className="size-4 accent-forest"
+                  />
+                  <span className={task.checklist.includes(item) ? 'text-[var(--muted)] line-through' : ''}>
+                    {item}
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       <div className="grid gap-4">
         <div>
           <p className="label mb-2">Photos</p>
           {locked && !task.photos.length ? (
-            <p className="text-xs font-semibold text-[var(--muted)]">Photos can be added on the day of the turnover.</p>
+            <p className="text-xs font-semibold text-[var(--muted)]">Photos can be added on the day of the task.</p>
           ) : (
             <TaskPhotos
               taskId={task.id}

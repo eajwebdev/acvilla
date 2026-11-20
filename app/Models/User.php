@@ -55,6 +55,21 @@ class User extends Authenticatable
         ];
     }
 
+    /** Signed-in roles that work inside a business's admin. */
+    public const TEAM_ROLES = ['ADMIN', 'MANAGER', 'STAFF'];
+
+    /** The owner and managers add, assign and edit tasks for the team. */
+    public function managesTasks(): bool
+    {
+        return in_array($this->role, ['ADMIN', 'MANAGER'], true);
+    }
+
+    /** Staff and managers clock in and out and see their own work first; the owner sees the whole business. */
+    public function worksShifts(): bool
+    {
+        return in_array($this->role, ['STAFF', 'MANAGER'], true);
+    }
+
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);

@@ -27,7 +27,8 @@ export default function TaskPhotos({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [view, setView] = useState<TaskPhoto | null>(null);
-  const canDelete = (p: TaskPhoto) => auth.user.role === 'ADMIN' || (p.uploaded_by === auth.user.id && !done);
+  const canDelete = (p: TaskPhoto) =>
+    auth.user.role === 'ADMIN' || auth.user.role === 'MANAGER' || (p.uploaded_by === auth.user.id && !done);
 
   async function upload(list: FileList | null) {
     if (!list?.length) return;

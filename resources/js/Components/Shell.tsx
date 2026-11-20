@@ -11,7 +11,7 @@ export const dashboardHref = (role: string) =>
     ? '/superadmin'
     : role === 'GUEST'
       ? '/booking'
-      : role === 'STAFF'
+      : role === 'STAFF' || role === 'MANAGER'
         ? '/admin/my-tasks'
         : '/admin';
 

@@ -54,7 +54,7 @@ class DashboardFilteringTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->where('day.days', 366)->has('cleaning', 0)->where('cleaningLimited', true)->has('day.arrivals', 2));
         $this->get("/admin?from={$to}&to={$from}")->assertSessionHasErrors('to');
 
-        $csv = $this->get("/admin/today/export?from={$from}&to={$to}")->assertDownload("front-desk_{$from}_to_{$to}.csv")->streamedContent();
+        $csv = $this->get("/admin/today/export?from={$from}&to={$to}&format=csv")->assertDownload("front-desk_{$from}_to_{$to}.csv")->streamedContent();
         $this->assertStringContainsString('EAJ-DEMO-CONFIRMED', $csv);
         $this->assertStringNotContainsString('EAJ-DEMO-MANUAL', $csv);
     }

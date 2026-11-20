@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\AuditLog;
 use App\Models\CleaningTask;
 use App\Models\CleaningTaskPhoto;
+use App\Models\Room;
 use App\Models\User;
 use App\Services\CleaningService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
@@ -29,8 +31,46 @@ class AdminCleaningController extends Controller
             'tasks' => $cleaning->forDay($tenant->id, $date, $settings),
             'checklist' => $settings['cleaning_checklist'],
             'checkOutTime' => $settings['check_out_time'], 'checkInTime' => $settings['check_in_time'],
-            'cleaners' => User::where('tenant_id', $tenant->id)->whereIn('role', ['ADMIN', 'STAFF'])->whereNull('deactivated_at')->orderBy('name')->get(['id', 'name']),
+            'cleaners' => $this->team($tenant->id)->orderBy('name')->get(['id', 'name', 'role']),
+            'rooms' => Room::where('tenant_id', $tenant->id)->where('active', true)->orderBy('name')->get(['id', 'name']),
         ]);
+    }
+
+    /** A task added by hand: any job, for any day from today on, optionally for a room and by a set time. */
+    public function store(Request $request)
+    {
+        $tenant = $request->user()->tenant;
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:120'],
+            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:'.today()->toDateString()],
+            'due_time' => ['nullable', 'date_format:H:i'],
+            'room_id' => ['nullable', 'integer', Rule::exists('rooms', 'id')->where('tenant_id', $tenant->id)],
+            'assigned_to' => ['nullable', 'integer', Rule::exists('users', 'id')->where('tenant_id', $tenant->id)->whereIn('role', User::TEAM_ROLES)->whereNull('deactivated_at')],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ], ['date.after_or_equal' => 'Pick today or a later day.', 'assigned_to.exists' => 'Pick someone on your team.', 'room_id.exists' => 'Pick one of your rooms.']);
+        $task = CleaningTask::create([...$data, 'title' => trim($data['title']), 'tenant_id' => $tenant->id, 'booking_id' => null,
+            'status' => 'NOT_STARTED', 'checklist' => [], 'created_by' => $request->user()->id]);
+        $this->audit($request, $task, 'cleaning.task_added', ['title' => $task->title, 'assigned_to' => $task->assigned_to]);
+
+        return back()->with('success', $task->assigned_to ? "Task added for {$task->cleaner?->name}." : 'Task added.');
+    }
+
+    /** Only tasks added by hand can be removed; a turnover belongs to its booking and goes away with it. */
+    public function destroy(Request $request, CleaningTask $task)
+    {
+        abort_unless($task->tenant_id === $request->user()->tenant_id, 404);
+        if (! $task->isManual()) {
+            throw ValidationException::withMessages(['task' => 'Check-out cleanings are made from bookings and cannot be removed.']);
+        }
+        $this->audit($request, $task, 'cleaning.task_removed', ['title' => $task->title]);
+        $task->delete();
+
+        return back()->with('success', 'Task removed.');
+    }
+
+    private function team(int $tenantId)
+    {
+        return User::where('tenant_id', $tenantId)->whereIn('role', User::TEAM_ROLES)->whereNull('deactivated_at');
     }
 
     /** The signed-in person's own assignments: anything still open from the last two weeks, today's work, and the week ahead. */
@@ -50,7 +90,7 @@ class AdminCleaningController extends Controller
 
         return Inertia::render('Admin/MyTasks', [
             'today' => $today->toDateString(), 'tasks' => $tasks, 'checklist' => $settings['cleaning_checklist'],
-            'photoRequired' => $user->role === 'STAFF' && $settings['cleaning_photo_required'],
+            'photoRequired' => ! $user->managesTasks() && $settings['cleaning_photo_required'],
             'maxPhotos' => self::MAX_PHOTOS,
         ]);
     }
@@ -60,26 +100,44 @@ class AdminCleaningController extends Controller
         $user = $request->user();
         $tenant = $user->tenant;
         abort_unless($task->tenant_id === $tenant->id, 404);
-        abort_unless($user->role === 'ADMIN' || $task->assigned_to === $user->id, 403);
+        abort_unless($user->managesTasks() || $task->assigned_to === $user->id, 403);
+        $manual = $task->isManual();
         $data = $request->validate([
             'status' => ['sometimes', 'in:'.implode(',', CleaningTask::STATUSES)],
             'assigned_to' => ['sometimes', 'nullable', 'integer'],
             'checklist' => ['sometimes', 'array', 'max:40'],
             'checklist.*' => ['string', 'max:80'],
             'notes' => ['sometimes', 'nullable', 'string', 'max:500'],
+            // What a task added by hand is about can be changed by whoever manages tasks.
+            'title' => ['sometimes', 'required', 'string', 'max:120'],
+            'date' => ['sometimes', 'required', 'date_format:Y-m-d'],
+            'due_time' => ['sometimes', 'nullable', 'date_format:H:i'],
+            'room_id' => ['sometimes', 'nullable', 'integer', Rule::exists('rooms', 'id')->where('tenant_id', $tenant->id)],
         ]);
-        if ($user->role === 'STAFF') {
+        $details = array_intersect_key($data, array_flip(['title', 'date', 'due_time', 'room_id']));
+        if ($details && (! $manual || ! $user->managesTasks())) {
+            abort(403);
+        }
+        if (isset($data['title'])) {
+            $data['title'] = trim($data['title']);
+        }
+        if (! $user->managesTasks()) {
             abort_if(array_key_exists('assigned_to', $data), 403);
             abort_if($task->status === 'DONE', 403);
         }
         if (array_key_exists('assigned_to', $data) && $data['assigned_to'] !== null) {
-            abort_unless(User::where('tenant_id', $tenant->id)->whereIn('role', ['ADMIN', 'STAFF'])->whereKey($data['assigned_to'])->exists(), 422);
+            abort_unless($this->team($tenant->id)->whereKey($data['assigned_to'])->exists(), 422);
         }
-        if ((isset($data['checklist']) || (isset($data['status']) && $data['status'] !== 'NOT_STARTED')) && $task->date->isFuture()) {
+        $date = isset($data['date']) ? CarbonImmutable::parse($data['date']) : $task->date;
+        if ((isset($data['checklist']) || (isset($data['status']) && $data['status'] !== 'NOT_STARTED')) && $date->isFuture()) {
             throw ValidationException::withMessages(['status' => $this->notYet($task)]);
         }
-        // Staff prove the room is done with a photo; admins can still close a task from the board.
-        $needsPhoto = $request->user()->role === 'STAFF' && $tenant->setting('cleaning_photo_required') && ! $task->photos()->exists();
+        // Staff prove a room is clean with a photo; the owner and managers can still close a task from the board.
+        // A task added by hand may not be about a room at all, so it never needs one.
+        $needsPhoto = ! $manual && ! $user->managesTasks() && $tenant->setting('cleaning_photo_required') && ! $task->photos()->exists();
+        if ($manual) {
+            unset($data['checklist']);
+        }
         if (isset($data['checklist'])) {
             $data['checklist'] = array_values(array_intersect($tenant->setting('cleaning_checklist'), $data['checklist']));
             $all = count($tenant->setting('cleaning_checklist'));
@@ -96,15 +154,20 @@ class AdminCleaningController extends Controller
         if (isset($data['status']) && $data['status'] !== $task->status) {
             $data += match ($data['status']) {
                 'IN_PROGRESS' => ['started_at' => $task->started_at ?? now(), 'completed_at' => null],
-                'DONE' => ['started_at' => $task->started_at ?? now(), 'completed_at' => now(), 'checklist' => $data['checklist'] ?? $tenant->setting('cleaning_checklist')],
+                'DONE' => ['started_at' => $task->started_at ?? now(), 'completed_at' => now(), 'checklist' => $manual ? [] : ($data['checklist'] ?? $tenant->setting('cleaning_checklist'))],
                 default => ['started_at' => null, 'completed_at' => null],
             };
             $this->audit($request, $task, 'cleaning.'.strtolower($data['status']));
         }
         $task->update($data);
 
+        if ($details) {
+            $this->audit($request, $task, 'cleaning.task_edited', $details);
+        }
+
         return back()->with('success', match ($data['status'] ?? null) {
-            'DONE' => "{$task->room?->name} marked ready.", 'IN_PROGRESS' => 'Cleaning started.', 'NOT_STARTED' => 'Task reset.', default => 'Cleaning task updated.',
+            'DONE' => $manual ? "“{$task->title}” done." : "{$task->room?->name} marked ready.",
+            'IN_PROGRESS' => $manual ? 'Task started.' : 'Cleaning started.', 'NOT_STARTED' => 'Task reset.', default => 'Task updated.',
         });
     }
 
@@ -112,7 +175,7 @@ class AdminCleaningController extends Controller
     {
         $user = $request->user();
         abort_unless($task->tenant_id === $user->tenant_id, 404);
-        abort_unless($user->role === 'ADMIN' || ($task->assigned_to === $user->id && $task->status !== 'DONE'), 403);
+        abort_unless($user->managesTasks() || ($task->assigned_to === $user->id && $task->status !== 'DONE'), 403);
         $request->validate([
             'photos' => ['required', 'array', 'min:1', 'max:6'],
             'photos.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
@@ -139,7 +202,7 @@ class AdminCleaningController extends Controller
     public function showPhoto(Request $request, CleaningTaskPhoto $photo)
     {
         abort_unless($photo->task?->tenant_id === $request->user()->tenant_id, 404);
-        abort_unless($request->user()->role === 'ADMIN' || $photo->task->assigned_to === $request->user()->id, 403);
+        abort_unless($request->user()->managesTasks() || $photo->task->assigned_to === $request->user()->id, 403);
         abort_unless(Storage::disk('local')->exists($photo->path), 404);
 
         return Storage::disk('local')->response($photo->path, null, ['Cache-Control' => 'private, max-age=86400']);
@@ -150,7 +213,7 @@ class AdminCleaningController extends Controller
         $user = $request->user();
         $task = $photo->task;
         abort_unless($task?->tenant_id === $user->tenant_id, 404);
-        abort_unless($user->role === 'ADMIN' || ($task->assigned_to === $user->id && $photo->uploaded_by === $user->id && $task->status !== 'DONE'), 403);
+        abort_unless($user->managesTasks() || ($task->assigned_to === $user->id && $photo->uploaded_by === $user->id && $task->status !== 'DONE'), 403);
         $photo->delete();
         $this->audit($request, $task, 'cleaning.photo_removed');
 

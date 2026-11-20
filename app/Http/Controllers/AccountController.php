@@ -49,6 +49,8 @@ class AccountController extends Controller
 
     public function destroy(Request $request)
     {
+        // The platform owner only visits AC Villa's admin; their account is not one of the resort's to delete.
+        abort_if($request->attributes->get('superadmin'), 403);
         $request->validate(['password' => 'required|current_password'], ['password.current_password' => 'That password is incorrect.']);
         $user = $request->user();
         if (! $this->canDelete($user)) {

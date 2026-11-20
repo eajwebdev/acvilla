@@ -66,7 +66,10 @@ export default function Profile({
             </span>
             <div>
               <p className="font-semibold">{details.data.name || 'Your name'}</p>
-              <p className="text-sm text-slate">{profile.role === 'ADMIN' ? 'Admin' : 'Staff'}</p>
+              <p className="text-sm text-slate">
+                {({ ADMIN: 'Admin', MANAGER: 'Manager', STAFF: 'Staff' } as Record<string, string>)[profile.role] ??
+                  'Platform owner'}
+              </p>
             </div>
           </div>
           <Field label="Full name" hint="This is how you appear to your team." error={details.errors.name}>

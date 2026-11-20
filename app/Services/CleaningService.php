@@ -7,7 +7,10 @@ use App\Models\CleaningTask;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
-/** Every departure creates a turnover: the unit must be cleaned before the next guest's check-in. */
+/**
+ * Every departure creates a turnover: the unit must be cleaned before the next guest's check-in.
+ * The owner, managers and the platform owner can also add tasks by hand (a title, maybe a room, maybe a due time).
+ */
 class CleaningService
 {
     public function __construct(private OperationsService $operations) {}
@@ -23,39 +26,48 @@ class CleaningService
                 ['tenant_id' => $tenantId, 'room_id' => $booking->room_id, 'date' => $iso, 'checklist' => []]);
         }
         $arrivals = $around->filter(fn (Booking $b) => $b->check_in->toDateString() === $iso)->groupBy('room_id');
-        $tasks = CleaningTask::with('room:id,name', 'cleaner:id,name', 'booking', 'photos.uploader:id,name')->where('tenant_id', $tenantId)
+        $tasks = CleaningTask::with('room:id,name', 'cleaner:id,name', 'creator:id,name', 'booking', 'photos.uploader:id,name')->where('tenant_id', $tenantId)
             ->whereDate('date', $iso)->get()
-            // A task whose booking was cancelled or moved no longer belongs to this day.
-            ->filter(fn (CleaningTask $t) => ! $t->booking || $departures->contains('id', $t->booking_id));
+            // A turnover whose booking was cancelled or moved no longer belongs to this day.
+            ->filter(fn (CleaningTask $t) => $t->isManual() || ! $t->booking || $departures->contains('id', $t->booking_id));
         $usedArrivals = [];
 
         return $tasks->map(function (CleaningTask $task) use ($settings, $arrivals, &$usedArrivals) {
-            $out = $task->booking ? $task->booking->times($settings)[1] : $settings['check_out_time'];
-            $next = $arrivals->get($task->room_id, collect())->first(fn (Booking $b) => ! in_array($b->id, $usedArrivals, true));
-            if ($next) {
-                $usedArrivals[] = $next->id;
+            $manual = $task->isManual();
+            $next = null;
+            if (! $manual) {
+                $next = $arrivals->get($task->room_id, collect())->first(fn (Booking $b) => ! in_array($b->id, $usedArrivals, true));
+                if ($next) {
+                    $usedArrivals[] = $next->id;
+                }
             }
-            $readyBy = $next ? $next->times($settings)[0] : $settings['check_in_time'];
-            $items = $settings['cleaning_checklist'];
+            // A manual task is due at its own time, or any time that day; it has no check-out before it and no checklist.
+            $out = $manual ? null : ($task->booking ? $task->booking->times($settings)[1] : $settings['check_out_time']);
+            $readyBy = $manual ? $task->due_time : ($next ? $next->times($settings)[0] : $settings['check_in_time']);
+            $items = $manual ? [] : $settings['cleaning_checklist'];
             $done = array_values(array_intersect($task->checklist ?? [], $items));
 
-            return ['id' => $task->id, 'room_id' => $task->room_id, 'unit' => $task->room?->name, 'status' => $task->status,
-                'risk' => $this->atRisk($task, $readyBy), 'assigned_to' => $task->assigned_to, 'cleaner' => $task->cleaner?->name,
+            return ['id' => $task->id, 'kind' => $manual ? 'manual' : 'turnover', 'title' => $task->title,
+                'room_id' => $task->room_id, 'room' => $task->room?->name,
+                // What the task is called on every list: the room for a turnover, the title for a manual task.
+                'unit' => $manual ? $task->title : $task->room?->name,
+                'status' => $task->status, 'risk' => $this->atRisk($task, $readyBy), 'assigned_to' => $task->assigned_to, 'cleaner' => $task->cleaner?->name,
+                'created_by' => $task->creator?->name,
                 'check_out_time' => $out, 'ready_by' => $readyBy, 'next_guest' => $next?->guest_name, 'next_booking_id' => $next?->id,
                 'departing_guest' => $task->booking?->guest_name, 'booking_id' => $task->booking_id,
                 'checklist' => $done, 'checklist_total' => count($items), 'notes' => $task->notes, 'date' => $task->date->toDateString(),
                 'photos' => $task->photos->map(fn ($photo) => $photo->toCard())->values(),
                 'started_at' => $task->started_at?->toIso8601String(), 'completed_at' => $task->completed_at?->toIso8601String()];
-        })->sortBy([['ready_by', 'asc'], ['unit', 'asc']])->values();
+        })->sortBy([fn ($a, $b) => ($a['ready_by'] ?? '99:99') <=> ($b['ready_by'] ?? '99:99'), ['unit', 'asc']])->values();
     }
 
-    /** Not finished and less than an hour before the next check-in (or already past it). */
-    private function atRisk(CleaningTask $task, string $readyBy): bool
+    /** Not finished and less than an hour before it is due (or already past it); a task from an earlier day left open is always at risk. */
+    private function atRisk(CleaningTask $task, ?string $readyBy): bool
     {
         if ($task->status === 'DONE' || ! $task->date->isToday()) {
             return $task->status !== 'DONE' && $task->date->isPast() && ! $task->date->isToday();
         }
 
-        return now()->greaterThanOrEqualTo(CarbonImmutable::parse($task->date->toDateString().' '.$readyBy)->subHour());
+        return $readyBy !== null && now()->greaterThanOrEqualTo(CarbonImmutable::parse($task->date->toDateString().' '.$readyBy)->subHour());
     }
 }

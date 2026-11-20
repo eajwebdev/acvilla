@@ -66,9 +66,20 @@ class OperationsAndPosTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->has('day.departures', 1)->has('cleaning', 1));
         $this->assertDatabaseHas('cleaning_tasks', ['booking_id' => $booking->id, 'status' => 'NOT_STARTED']);
 
-        $csv = $this->get('/admin/today/export?date='.today()->toDateString())->assertDownload('front-desk_'.today()->toDateString().'.csv');
+        $csv = $this->get('/admin/today/export?format=csv&date='.today()->toDateString())->assertDownload('front-desk_'.today()->toDateString().'.csv');
         $this->assertStringContainsString('EAJ-DEMO-CONFIRMED', $csv->streamedContent());
+
+        // By default it is a PDF the browser shows in its viewer; ?download=1 saves it instead.
+        $file = 'front-desk_'.today()->toDateString().'.pdf';
+        $pdf = $this->get('/admin/today/export?date='.today()->toDateString())->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('inline', $pdf->headers->get('Content-Disposition'));
+        $this->assertStringContainsString($file, $pdf->headers->get('Content-Disposition'));
+        $this->assertStringStartsWith('%PDF', $pdf->getContent());
+        $download = $this->get('/admin/today/export?download=1&date='.today()->toDateString())->assertOk();
+        $this->assertStringStartsWith('attachment', $download->headers->get('Content-Disposition'));
         $this->get('/admin?date=not-a-date')->assertSessionHasErrors('date');
+        // Staff don't get the owner's report.
+        $this->actingAs($this->user('staff@example.com'))->get('/admin/today/export')->assertForbidden();
     }
 
     public function test_calendar_shows_bookings_blocks_and_respects_tenant(): void
@@ -87,6 +98,32 @@ class OperationsAndPosTest extends TestCase
         $this->get('/admin/insights?range=7d')->assertOk();
         $foreignRoom = Room::where('slug', 'heritage-suite')->firstOrFail();
         $this->get('/admin/calendar?room_id='.$foreignRoom->id)->assertNotFound();
+    }
+
+    public function test_calendar_schedule_window_defaults_to_the_next_week_and_always_includes_today(): void
+    {
+        $admin = $this->user('admin@example.com');
+        $confirmed = Booking::where('reference', 'EAJ-DEMO-CONFIRMED')->firstOrFail();
+        $confirmed->update(['check_in' => today(), 'check_out' => today()->addDays(2)]);
+        $later = Booking::where('reference', 'EAJ-DEMO-PENDING')->firstOrFail();
+        $later->update(['check_in' => today()->addDays(40), 'check_out' => today()->addDays(42), 'status' => 'CONFIRMED']);
+
+        // Schedule by default: today and the next 6 days.
+        $this->actingAs($admin)->get('/admin/calendar')->assertInertia(fn (Assert $page) => $page->where('view', 'schedule')
+            ->where('window.from', today()->toDateString())->where('window.to', today()->addDays(6)->toDateString())
+            ->where('window.bookings', fn ($rows) => collect($rows)->pluck('reference')->contains('EAJ-DEMO-CONFIRMED')
+                && ! collect($rows)->pluck('reference')->contains('EAJ-DEMO-PENDING'))
+            ->where('window.bookings.0.guest_phone', fn ($v) => true)->has('window.bookings.0.reference'));
+
+        // A window ahead still carries today's bookings (for the "today" strip), and is capped at 62 days.
+        $from = today()->addDays(38)->toDateString();
+        $this->get('/admin/calendar?view=board&from='.$from.'&to='.today()->addDays(200)->toDateString())
+            ->assertInertia(fn (Assert $page) => $page->where('view', 'board')->where('window.from', $from)
+                ->where('window.to', today()->addDays(38 + 61)->toDateString())
+                ->where('window.bookings', fn ($rows) => collect($rows)->pluck('reference')->contains('EAJ-DEMO-PENDING')
+                    && collect($rows)->pluck('reference')->contains('EAJ-DEMO-CONFIRMED')));
+        $this->get('/admin/calendar?from='.$from.'&to='.today()->toDateString())->assertSessionHasErrors('to');
+        $this->get('/admin/calendar?view=nope')->assertSessionHasErrors('view');
     }
 
     public function test_bookings_tabs_detail_and_availability(): void

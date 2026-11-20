@@ -21,6 +21,9 @@ class AdminCalendarController extends Controller
             'month' => ['nullable', 'date_format:Y-m'],
             'room_id' => ['nullable', 'integer'],
             'date' => ['nullable', 'date_format:Y-m-d'],
+            'view' => ['nullable', 'in:schedule,board,month'],
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from'],
         ]);
         $tenant = $request->user()->tenant;
         $settings = $tenant->settings;
@@ -42,8 +45,25 @@ class AdminCalendarController extends Controller
                 'starts_on' => $block->starts_on->toDateString(), 'ends_on' => $block->ends_on->toDateString()]);
         $active = $rooms->where('active', true);
 
+        // The schedule and the unit board: a window of days (today and the next 6 by default, up to 62 days), always
+        // loaded together with today so the "today at a glance" strip is right whatever window is picked.
+        $from = CarbonImmutable::parse($filters['from'] ?? today()->toDateString());
+        $to = CarbonImmutable::parse($filters['to'] ?? $from->addDays(6)->toDateString())->min($from->addDays(61));
+        $windowFrom = $from->min(today());
+        $windowTo = $to->max(today());
+        $windowBookings = $operations->bookingsAround($tenant->id, $windowFrom, $windowTo)
+            ->when(! empty($filters['room_id']), fn ($list) => $list->where('room_id', (int) $filters['room_id']))
+            ->values()->map(fn (Booking $b) => $operations->row($b, $settings, 'arrival'));
+        $windowBlocks = BlockedDate::with('room:id,name')->where('tenant_id', $tenant->id)->whereDate('starts_on', '<=', $windowTo->toDateString())
+            ->whereDate('ends_on', '>', $windowFrom->toDateString())
+            ->when(! empty($filters['room_id']), fn ($q) => $q->where('room_id', $filters['room_id']))->get()
+            ->map(fn (BlockedDate $block) => ['id' => $block->id, 'room_id' => $block->room_id, 'unit' => $block->room?->name, 'reason' => $block->reason,
+                'starts_on' => $block->starts_on->toDateString(), 'ends_on' => $block->ends_on->toDateString()]);
+
         return Inertia::render('Admin/Calendar', [
             'month' => $month->format('Y-m'), 'start' => $start->toDateString(), 'today' => today()->toDateString(),
+            'view' => $filters['view'] ?? 'schedule',
+            'window' => ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'bookings' => $windowBookings, 'blocked' => $windowBlocks],
             'filters' => $filters, 'bookings' => $bookings, 'blocked' => $blocks,
             'rooms' => $rooms->map(fn (Room $room) => ['id' => $room->id, 'name' => $room->name, 'property' => $room->property?->name, 'quantity' => $room->quantity, 'active' => $room->active])->values(),
             'inventory' => (int) (! empty($filters['room_id']) ? $active->where('id', (int) $filters['room_id'])->sum('quantity') : $active->sum('quantity')),

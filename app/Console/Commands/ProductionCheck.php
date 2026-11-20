@@ -52,9 +52,9 @@ class ProductionCheck extends Command
             $site = Tenant::where('slug', config('platform.site_tenant'))->first();
             $this->check((bool) $site, 'The resort ('.config('platform.site_tenant').') exists', 'Run php artisan db:seed --class=AcVillaSeeder --force.');
             $this->check($site && User::where('tenant_id', $site->id)->where('role', 'ADMIN')->whereNull('deactivated_at')->exists(), 'An owner account exists', 'Run php artisan db:seed --class=AcVillaSeeder --force.');
-            $demo = User::where('email', 'like', '%@example.com')->whereIn('role', ['ADMIN', 'STAFF', 'SUPERADMIN'])->pluck('email');
+            $demo = User::where('email', 'like', '%@example.com')->whereIn('role', [...User::TEAM_ROLES, 'SUPERADMIN'])->pluck('email');
             $this->check($demo->isEmpty(), 'No demo staff accounts', 'Remove the demo accounts: '.$demo->implode(', '));
-            $weak = User::whereIn('role', ['ADMIN', 'STAFF', 'SUPERADMIN'])->get()->filter(fn (User $u) => collect(self::KNOWN_PASSWORDS)->contains(fn ($p) => Hash::check($p, $u->password)));
+            $weak = User::whereIn('role', [...User::TEAM_ROLES, 'SUPERADMIN'])->get()->filter(fn (User $u) => collect(self::KNOWN_PASSWORDS)->contains(fn ($p) => Hash::check($p, $u->password)));
             $this->check($weak->isEmpty(), 'No staff account uses a known test password', 'Change the password of: '.$weak->pluck('email')->implode(', '));
         } catch (\Throwable $e) {
             $this->check(false, 'Database connection works', 'Check DB_HOST, DB_DATABASE, DB_USERNAME, DB_PASSWORD ('.$e->getMessage().').');

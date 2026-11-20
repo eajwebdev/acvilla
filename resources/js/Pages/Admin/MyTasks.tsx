@@ -7,12 +7,16 @@ import TaskPhotos, { type TaskPhoto } from '../../Components/TaskPhotos';
 
 type Task = {
   id: number;
+  kind: 'turnover' | 'manual';
+  room: string | null;
+  created_by: string | null;
   unit: string;
   date: string;
   status: 'NOT_STARTED' | 'IN_PROGRESS' | 'DONE';
   risk: boolean;
-  ready_by: string;
-  check_out_time: string;
+  /** The next check-in, or a manual task's due time; null = any time that day. */
+  ready_by: string | null;
+  check_out_time: string | null;
   next_guest: string | null;
   departing_guest: string | null;
   checklist: string[];
@@ -59,14 +63,14 @@ export default function MyTasks({ today, tasks, checklist, photoRequired, maxPho
         ))}
       </div>
       <p className="mx-auto mb-4 max-w-2xl text-sm font-semibold text-[var(--muted)]">
-        {summary || 'Nothing assigned to you yet'}. Tap a room to see its checklist, photos and notes.
+        {summary || 'Nothing assigned to you yet'}. Tap a task to see its checklist, photos and notes.
       </p>
       {tasks.length === 0 ? (
         <div className="card mx-auto max-w-xl">
           <Empty
             icon={<ClipboardCheck size={18} />}
             title="No tasks assigned to you"
-            body="When a room is assigned to you on the Cleaning board, it shows up here with its checklist."
+            body="When a room or a task is assigned to you on the Cleaning board, it shows up here."
           />
         </div>
       ) : (
@@ -112,7 +116,13 @@ function TaskCard({
   maxPhotos: number;
 }) {
   const done = t.status === 'DONE';
+  const manual = t.kind === 'manual';
   const future = t.date > today && !done;
+  // A task added by hand has no checklist and never needs a photo.
+  if (manual) {
+    items = [];
+    photoRequired = false;
+  }
   const [expanded, setExpanded] = useState(!done && t.date <= today);
   const [notes, setNotes] = useState(t.notes ?? '');
   const [busy, setBusy] = useState(false);
@@ -152,12 +162,21 @@ function TaskCard({
             <span className={t.date < today && !done ? 'text-[var(--danger)]' : ''}>{when}</span>
             <span className={`flex items-center gap-1 ${t.risk && !done ? 'text-[var(--danger)]' : ''}`}>
               <Clock size={12} />
-              Ready by {fmtTime(t.ready_by)}
+              {t.ready_by ? `${manual ? 'Due' : 'Ready by'} ${fmtTime(t.ready_by)}` : 'Any time'}
             </span>
-            <span className="flex items-center gap-1">
-              <UserRound size={12} />
-              {t.next_guest ? `Next: ${t.next_guest}` : 'No arrival'}
-            </span>
+            {manual ? (
+              (t.room || t.created_by) && (
+                <span className="flex items-center gap-1">
+                  <UserRound size={12} />
+                  {[t.room, t.created_by && `from ${t.created_by}`].filter(Boolean).join(' · ')}
+                </span>
+              )
+            ) : (
+              <span className="flex items-center gap-1">
+                <UserRound size={12} />
+                {t.next_guest ? `Next: ${t.next_guest}` : 'No arrival'}
+              </span>
+            )}
           </span>
         </span>
         <span className="flex shrink-0 flex-col items-end gap-1">
@@ -171,7 +190,8 @@ function TaskCard({
             <span className="pill border-amber-200 bg-amber-50 text-amber-800">to do</span>
           )}
           <span className="num text-[11px] font-semibold text-[var(--muted)]">
-            {t.checklist.length}/{t.checklist_total} · <Camera size={11} className="inline" /> {t.photos.length}
+            {!manual && `${t.checklist.length}/${t.checklist_total} · `}
+            <Camera size={11} className="inline" /> {t.photos.length}
           </span>
         </span>
       </button>
@@ -179,8 +199,8 @@ function TaskCard({
         <div className="grid gap-3 border-t border-[var(--line)] p-4">
           <p className="flex items-center gap-2 rounded-xl bg-mist px-3 py-2.5 text-sm font-semibold text-ink-soft">
             <Clock size={15} />
-            Starts on {fmtDay(t.date, { weekday: 'long', month: 'short', day: 'numeric' })}, after the guest checks out
-            at {fmtTime(t.check_out_time)}.
+            Starts on {fmtDay(t.date, { weekday: 'long', month: 'short', day: 'numeric' })}
+            {manual ? '.' : `, after the guest checks out at ${fmtTime(t.check_out_time)}.`}
           </p>
           {items.length > 0 && (
             <p className="text-xs font-semibold text-[var(--muted)]">
@@ -194,7 +214,7 @@ function TaskCard({
           {done && (
             <p className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">
               <CircleCheck size={16} />
-              Marked ready
+              {manual ? 'Done' : 'Marked ready'}
               {t.completed_at
                 ? ` at ${new Date(t.completed_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}`
                 : ''}
@@ -208,7 +228,7 @@ function TaskCard({
               className="btn btn-navy !min-h-[48px] w-full"
             >
               <Play size={16} />
-              Start cleaning
+              {manual ? 'Start task' : 'Start cleaning'}
             </button>
           )}
           {items.length > 0 && (
@@ -248,7 +268,7 @@ function TaskCard({
             <TaskPhotos taskId={t.id} photos={t.photos} done={done} max={maxPhotos} big />
           </div>
           <div>
-            <p className="label mb-2">Notes for the front desk</p>
+            <p className="label mb-2">{manual ? 'Notes' : 'Notes for the front desk'}</p>
             <textarea
               value={notes}
               maxLength={500}
@@ -290,7 +310,7 @@ function TaskCard({
                 className="btn btn-pink !min-h-[50px] w-full !text-[15px]"
               >
                 <Check size={17} />
-                Mark room ready
+                {manual ? 'Mark done' : 'Mark room ready'}
               </button>
               {needPhoto ? (
                 <p className="mt-1.5 text-center text-xs font-semibold text-[var(--muted)]">

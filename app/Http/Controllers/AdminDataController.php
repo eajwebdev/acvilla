@@ -37,7 +37,7 @@ class AdminDataController extends Controller
             'logs' => $logs, 'filters' => $filters,
             'areas' => AuditLog::where('tenant_id', $tenantId)->distinct()->pluck('action')
                 ->map(fn ($action) => explode('.', $action)[0])->unique()->sort()->values(),
-            'people' => User::where('tenant_id', $tenantId)->whereIn('role', ['ADMIN', 'STAFF'])->orderBy('name')->get(['id', 'name']),
+            'people' => User::where('tenant_id', $tenantId)->whereIn('role', User::TEAM_ROLES)->orderBy('name')->get(['id', 'name']),
         ]);
     }
 

@@ -2,7 +2,7 @@ import { router } from '@inertiajs/react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { CornerDownLeft, LogOut, Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { moreLinks, opsNav, platformNav, settingsGroups, staffNav, type NavItem } from './nav';
+import { managerNav, moreLinks, opsNav, platformNav, settingsGroups, staffNav, type NavItem } from './nav';
 
 type Command = { id: string; label: string; group: string; icon: NavItem[2]; run: () => void };
 
@@ -18,9 +18,9 @@ function commandsFor(role: string, platform: boolean): Command[] {
     });
   const list = platform
     ? platformNav.map(go('Platform'))
-    : role === 'STAFF'
+    : role === 'STAFF' || role === 'MANAGER'
       ? [
-          ...staffNav.map(go('Workspace')),
+          ...(role === 'MANAGER' ? managerNav : staffNav).map(go('Workspace')),
           ...settingsGroups.filter(([, , adminOnly]) => !adminOnly).flatMap(([, links]) => links.map(go('Settings'))),
         ]
       : [

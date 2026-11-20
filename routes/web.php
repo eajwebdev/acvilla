@@ -71,7 +71,8 @@ Route::middleware(['auth', 'role:GUEST'])->prefix('account')->name('account.')->
     Route::get('/bookings', [DashboardController::class, 'account'])->name('bookings');
     Route::post('/reviews', [GuestReviewController::class, 'store'])->middleware('throttle:5,1,reviews.store')->name('reviews.store');
 });
-Route::middleware(['auth', 'role:ADMIN,STAFF', 'tenant.active'])->prefix('admin')->name('admin.')->group(function () {
+// site.superadmin: the platform owner works in AC Villa's admin as its Admin (see SuperadminActsAsSiteAdmin).
+Route::middleware(['auth', 'site.superadmin', 'role:ADMIN,MANAGER,STAFF', 'tenant.active'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/notifications', [AdminNotificationController::class, 'index'])->name('notifications.index');
     Route::get('/notifications/count', [AdminNotificationController::class, 'count'])->name('notifications.count');
     Route::get('/live', [AdminNotificationController::class, 'live'])->middleware('throttle:120,1,admin.live')->name('live');
@@ -108,11 +109,17 @@ Route::middleware(['auth', 'role:ADMIN,STAFF', 'tenant.active'])->prefix('admin'
     Route::put('/payments/{payment}/review', [AdminBookingController::class, 'review'])->name('payments.review');
     Route::post('/messages/{message}/retry', [AdminMessageController::class, 'retry'])->middleware('throttle:20,1,messages.retry')->name('messages.retry');
 });
-Route::middleware(['auth', 'role:STAFF', 'tenant.active'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'role:STAFF,MANAGER', 'tenant.active'])->prefix('admin')->name('admin.')->group(function () {
     Route::post('/attendance/clock-in', [AdminAttendanceController::class, 'clockIn'])->name('attendance.clock-in');
     Route::post('/attendance/clock-out', [AdminAttendanceController::class, 'clockOut'])->name('attendance.clock-out');
 });
-Route::middleware(['auth', 'role:ADMIN', 'tenant.active'])->prefix('admin')->name('admin.')->group(function () {
+// The Cleaning board: the owner and managers see every task, and add and remove the ones made by hand.
+Route::middleware(['auth', 'site.superadmin', 'role:ADMIN,MANAGER', 'tenant.active'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/cleaning', [AdminCleaningController::class, 'index'])->name('cleaning.index');
+    Route::post('/cleaning', [AdminCleaningController::class, 'store'])->name('cleaning.store');
+    Route::delete('/cleaning/{task}', [AdminCleaningController::class, 'destroy'])->whereNumber('task')->name('cleaning.destroy');
+});
+Route::middleware(['auth', 'site.superadmin', 'role:ADMIN', 'tenant.active'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/today/export', [DashboardController::class, 'exportDay'])->name('today.export');
     Route::get('/reports', fn (Request $request) => redirect()->route('admin.insights.index', $request->query()))->name('reports.index');
     Route::get('/reports/export', [AdminReportController::class, 'export'])->name('reports.export');
@@ -123,7 +130,6 @@ Route::middleware(['auth', 'role:ADMIN', 'tenant.active'])->prefix('admin')->nam
     Route::get('/reviews', [AdminReviewController::class, 'index'])->name('reviews.index');
     Route::put('/reviews/{review}', [AdminReviewController::class, 'update'])->whereNumber('review')->name('reviews.update');
     Route::delete('/reviews/{review}', [AdminReviewController::class, 'destroy'])->whereNumber('review')->name('reviews.destroy');
-    Route::get('/cleaning', [AdminCleaningController::class, 'index'])->name('cleaning.index');
     Route::put('/attendance/{entry}', [AdminAttendanceController::class, 'correct'])->whereNumber('entry')->name('attendance.correct');
     Route::post('/calendar/blocks', [AdminCalendarController::class, 'block'])->name('calendar.blocks.store');
     Route::delete('/calendar/blocks/{blockedDate}', [AdminCalendarController::class, 'unblock'])->name('calendar.blocks.destroy');
