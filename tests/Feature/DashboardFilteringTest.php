@@ -72,6 +72,38 @@ class DashboardFilteringTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->component('Admin/Bookings')->has('bookings.data', 0));
     }
 
+    public function test_bookings_list_filters_by_stay_timing_and_channel_with_tab_counts(): void
+    {
+        $admin = User::where('email', 'admin@example.com')->firstOrFail();
+        $today = today()->toDateString();
+        $mine = Booking::where('tenant_id', $admin->tenant_id);
+        $stay = (clone $mine)->whereNotIn('status', ['CANCELLED', 'EXPIRED', 'NO_SHOW'])->firstOrFail();
+        $stay->update(['check_in' => today()->subDay(), 'check_out' => today()->addDay(), 'status' => 'CHECKED_IN', 'source' => 'airbnb']);
+
+        $this->actingAs($admin)->get('/admin/bookings')->assertInertia(fn (Assert $page) => $page
+            ->where('counts.all', (clone $mine)->count())
+            ->where('counts.cancelled', (clone $mine)->whereIn('status', ['CANCELLED', 'EXPIRED', 'NO_SHOW'])->count())
+            ->where('summary.in_house', 1)->has('summary.to_collect')->where('today', $today));
+
+        $this->get('/admin/bookings?when=inhouse')->assertInertia(fn (Assert $page) => $page
+            ->has('bookings.data', 1)->where('bookings.data.0.id', $stay->id));
+        $this->get('/admin/bookings?when=inhouse&channel=direct')->assertInertia(fn (Assert $page) => $page->has('bookings.data', 0));
+        $this->get('/admin/bookings?when=inhouse&channel=ota')->assertInertia(fn (Assert $page) => $page->has('bookings.data', 1));
+
+        $this->get('/admin/bookings?when=upcoming')->assertInertia(function (Assert $page) use ($today) {
+            foreach ($page->toArray()['props']['bookings']['data'] as $row) {
+                $this->assertGreaterThanOrEqual($today, substr($row['check_in'], 0, 10));
+                $this->assertNotContains($row['status'], ['CANCELLED', 'EXPIRED', 'NO_SHOW']);
+            }
+        });
+        $this->get('/admin/bookings?when=past')->assertInertia(function (Assert $page) use ($today) {
+            foreach ($page->toArray()['props']['bookings']['data'] as $row) {
+                $this->assertLessThanOrEqual($today, substr($row['check_out'], 0, 10));
+            }
+        });
+        $this->get('/admin/bookings?when=someday')->assertSessionHasErrors('when');
+    }
+
     public function test_occupancy_uses_stay_nights_and_real_inventory(): void
     {
         Booking::where('reference', 'EAJ-DEMO-CONFIRMED')->update([

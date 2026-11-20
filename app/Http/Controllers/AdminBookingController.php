@@ -31,7 +31,7 @@ class AdminBookingController extends Controller
         'CHECKED_IN' => ['CHECKED_OUT'], 'CHECKED_OUT' => ['COMPLETED'],
     ];
 
-    private const TABS = ['all', 'requests', 'unpaid', 'paid', 'direct', 'airbnb', 'cancelled'];
+    private const TABS = ['all', 'requests', 'verify', 'unpaid', 'paid', 'direct', 'airbnb', 'cancelled'];
 
     public function index(Request $request)
     {
@@ -43,6 +43,8 @@ class AdminBookingController extends Controller
             'search' => ['nullable', 'string', 'max:120'],
             'tab' => ['nullable', 'in:'.implode(',', self::TABS)],
             'source' => ['nullable', 'in:'.implode(',', array_keys(Booking::SOURCES))],
+            'channel' => ['nullable', 'in:direct,ota'],
+            'when' => ['nullable', 'in:upcoming,inhouse,past'],
             'sort' => ['nullable', 'in:guest,unit,stay,balance,created'],
             'dir' => ['nullable', 'in:asc,desc'],
             'open' => ['nullable', 'integer'],
@@ -60,13 +62,11 @@ class AdminBookingController extends Controller
         if (! empty($filters['status'])) {
             $query->where('status', $filters['status']);
         }
-        match ($filters['tab'] ?? 'all') {
-            'requests' => $query->where('source', 'website')->where('status', 'PENDING')->where('expires_at', '>', now()),
-            'unpaid' => $query->whereIn('payment_status', ['UNPAID', 'PARTIALLY_PAID', 'PENDING'])->whereNotIn('status', ['CANCELLED', 'EXPIRED', 'NO_SHOW']),
-            'paid' => $query->where('payment_status', 'PAID'),
-            'direct' => $query->whereIn('source', Booking::DIRECT_SOURCES),
-            'airbnb' => $query->where('source', 'airbnb'),
-            'cancelled' => $query->whereIn('status', ['CANCELLED', 'EXPIRED', 'NO_SHOW']),
+        $this->applyTab($query, $filters['tab'] ?? 'all');
+        $this->applyWhen($query, $filters['when'] ?? null);
+        match ($filters['channel'] ?? null) {
+            'direct' => $query->where(fn ($q) => $q->whereIn('source', Booking::DIRECT_SOURCES)->orWhereNull('source')),
+            'ota' => $query->whereNotIn('source', Booking::DIRECT_SOURCES),
             default => null,
         };
         if (! empty($filters['source'])) {
@@ -78,14 +78,27 @@ class AdminBookingController extends Controller
                 ->orWhere('guest_email', 'like', $term)->orWhere('guest_phone', 'like', $term)
                 ->orWhereHas('room', fn ($room) => $room->where('name', 'like', $term)));
         }
-        $dir = $filters['dir'] ?? 'desc';
-        match ($filters['sort'] ?? 'created') {
+        // Looking ahead reads best soonest-first; everything else newest-first.
+        $sort = $filters['sort'] ?? match ($filters['when'] ?? null) {
+            'upcoming', 'inhouse' => 'stay',
+            default => 'created',
+        };
+        $dir = $filters['dir'] ?? (isset($filters['sort']) || $sort === 'created' || ($filters['when'] ?? null) === 'past' ? 'desc' : 'asc');
+        match ($sort) {
             'guest' => $query->orderBy('guest_name', $dir),
             'unit' => $query->orderBy(Room::select('name')->whereColumn('rooms.id', 'bookings.room_id'), $dir),
-            'stay' => $query->orderBy('check_in', $dir),
+            'stay' => $query->orderBy('check_in', $dir)->orderBy('bookings.id', $dir),
             'balance' => $query->orderByRaw('(bookings.total - coalesce((select sum(amount) from payments where payments.booking_id = bookings.id and payments.status = ?), 0)) '.($dir === 'asc' ? 'asc' : 'desc'), ['PAID']),
             default => $query->orderBy('bookings.created_at', $dir)->orderBy('bookings.id', $dir),
         };
+
+        $base = fn () => Booking::query()->where('tenant_id', $tenantId);
+        $today = today()->toDateString();
+        $live = fn ($q) => $q->whereNotIn('status', ['CANCELLED', 'EXPIRED', 'NO_SHOW']);
+        $unpaid = $live($base())->whereIn('payment_status', ['UNPAID', 'PARTIALLY_PAID', 'PENDING'])
+            ->where('check_out', '>=', $today)
+            ->withSum(['payments as paid_amount' => fn ($p) => $p->where('status', 'PAID')], 'amount')
+            ->get(['id', 'total']);
 
         return Inertia::render('Admin/Bookings', [
             'bookings' => $query->paginate(30)->withQueryString(),
@@ -93,7 +106,54 @@ class AdminBookingController extends Controller
             'active' => Booking::where('tenant_id', $tenantId)->whereIn('status', ['PENDING', 'AWAITING_PAYMENT', 'PAID', 'CONFIRMED', 'CHECKED_IN'])
                 ->where(fn ($q) => $q->whereNotIn('status', ['PENDING', 'AWAITING_PAYMENT'])->orWhere('expires_at', '>', now()))->count(),
             'sources' => Booking::SOURCES,
+            'today' => $today,
+            // Per-tab totals, so each tab says how much is behind it before it is clicked.
+            'counts' => collect(['all', 'requests', 'verify', 'unpaid', 'paid', 'cancelled'])
+                ->mapWithKeys(fn ($tab) => [$tab => $this->applyTab($base(), $tab)->count()]),
+            'summary' => [
+                'arriving_today' => $live($base())->whereDate('check_in', $today)->whereNotIn('status', ['PENDING', 'AWAITING_PAYMENT'])->count(),
+                'arriving_week' => $live($base())->whereDate('check_in', '>=', $today)->whereDate('check_in', '<=', today()->addDays(6)->toDateString())
+                    ->whereNotIn('status', ['PENDING', 'AWAITING_PAYMENT'])->count(),
+                'in_house' => $this->applyWhen($base(), 'inhouse')->count(),
+                'to_collect' => round($unpaid->sum(fn ($b) => max(0, (float) $b->total - (float) $b->paid_amount)), 2),
+                'to_collect_count' => $unpaid->count(),
+                'to_verify' => $this->applyTab($base(), 'verify')->count(),
+            ],
         ]);
+    }
+
+    /** The list tabs. "direct" and "airbnb" are older links, kept working; the page now filters channels separately. */
+    private function applyTab($query, string $tab)
+    {
+        match ($tab) {
+            'requests' => $query->where('source', 'website')->where('status', 'PENDING')->where('expires_at', '>', now()),
+            'verify' => $query->whereHas('payments', fn ($p) => $p->where('status', 'PENDING')),
+            'unpaid' => $query->whereIn('payment_status', ['UNPAID', 'PARTIALLY_PAID', 'PENDING'])->whereNotIn('status', ['CANCELLED', 'EXPIRED', 'NO_SHOW']),
+            'paid' => $query->where('payment_status', 'PAID'),
+            'direct' => $query->whereIn('source', Booking::DIRECT_SOURCES),
+            'airbnb' => $query->where('source', 'airbnb'),
+            'cancelled' => $query->whereIn('status', ['CANCELLED', 'EXPIRED', 'NO_SHOW']),
+            default => null,
+        };
+
+        return $query;
+    }
+
+    /** When the stay is: still to come, under way now, or over. Cancelled stays never count as coming or in house. */
+    private function applyWhen($query, ?string $when)
+    {
+        $today = today()->toDateString();
+        match ($when) {
+            'upcoming' => $query->whereDate('check_in', '>=', $today)->whereNotIn('status', ['CANCELLED', 'EXPIRED', 'NO_SHOW', 'CHECKED_OUT', 'COMPLETED']),
+            // Staying tonight, or due out today but not checked out yet.
+            'inhouse' => $query->whereDate('check_in', '<=', $today)->where(fn ($q) => $q
+                ->where(fn ($q) => $q->whereDate('check_out', '>', $today)->whereIn('status', ['CONFIRMED', 'PAID', 'CHECKED_IN']))
+                ->orWhere(fn ($q) => $q->whereDate('check_out', $today)->where('status', 'CHECKED_IN'))),
+            'past' => $query->whereDate('check_out', '<=', $today),
+            default => null,
+        };
+
+        return $query;
     }
 
     /** Everything the booking drawer shows, as JSON so any page can open it. */
